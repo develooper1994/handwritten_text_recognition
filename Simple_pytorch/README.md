@@ -75,5 +75,5 @@ Then the training messages are printed to terminal like
 
 * [PyTorch Tutorials >  Translation with a Sequence to Sequence Network and Attention](https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html)
 
-
+* https://github.com/bai-shang/crnn_seq2seq_ocr_pytorch
 
