@@ -1,6 +1,10 @@
-# Handwritten digit classification
-In this example i have made a very simple real handwritten digit classification.
+# Handwritten classification
+In this repository i have made a research, collect researches, 
+learned how algorithms running and made examples.
+
+- In Simple_pytorch folder, i have made a very simple real handwritten digit classification.
 I really drew a number on paper, photographed and classified the drawing number.
+- Other two folders are just collection of my studies.
 
 # Dependencies
 All dependencies should be installed are as follow:
