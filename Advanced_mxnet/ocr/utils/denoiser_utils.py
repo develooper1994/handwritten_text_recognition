@@ -3,7 +3,7 @@ import leven
 import mxnet as mx
 import numpy as np
 
-from Advanced_mxnet.ocr.utils.encoder_decoder import decode_char
+from ocr.utils.encoder_decoder import decode_char
 
 class SequenceGenerator:
     

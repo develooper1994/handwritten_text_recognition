@@ -51,3 +51,5 @@ mx.test_utils.download('https://s3.us-east-2.amazonaws.com/gluon-ocr/models/all.
 mx.test_utils.download('https://s3.us-east-2.amazonaws.com/gluon-ocr/models/text_train.txt', dirname=dirname)
 mx.test_utils.download('https://s3.us-east-2.amazonaws.com/gluon-ocr/models/validating.json', dirname=dirname)
 mx.test_utils.download('https://s3.us-east-2.amazonaws.com/gluon-ocr/models/typo-corpus-r1.txt', dirname=dirname)
+
+print("Finished")
