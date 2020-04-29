@@ -1,2 +1,4 @@
 leven
 mxnet-cu102mkl
+gluoncv
+gluonnlp
