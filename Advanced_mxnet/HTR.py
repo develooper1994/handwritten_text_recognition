@@ -108,7 +108,7 @@ class HTR:
         self.crop = crop
         self.is_test = is_test
         self.form_size = form_size
-        self.predicted_text = 0
+        self.predicted_text_area = 0
         self.croped_image = 0
         self.segmented_paragraph_size = (700, 700)
         self.line_image_size = (60, 800)
@@ -173,13 +173,27 @@ class HTR:
         self.one_step(*args, **kwargs)
 
     def one_step(self, expand_bb_scale_x=0.18, expand_bb_scale_y=0.23, segmented_paragraph_size=(700, 700)):
-        self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
+        predicted_text_area = self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
+
+        croped_image = None
         if self.crop:
-            self.crop_image(segmented_paragraph_size)
-        self.word_detection()
-        self.word_to_line()
-        self.handwriting_recognition_probs()
-        self.qualitative_result()
+            croped_image = self.crop_image(segmented_paragraph_size)
+
+        predicted_bb = self.word_detection()
+        line_images_array = self.word_to_line()
+        character_probs = self.handwriting_recognition_probs()
+
+        decoded = self.qualitative_result()
+        # decoded_line_ams, decoded_line_bss, decoded_line_denoisers = decoded
+        results = {
+            'predicted_text_area': predicted_text_area,
+            'croped_image': croped_image,
+            'predicted_bb': predicted_bb,
+            'line_images_array': line_images_array,
+            'character_probs': character_probs,
+            'decoded': decoded
+        }
+        return results
 
     ## Paragraph segmentation
     # Given the image of a form in the IAM dataset, predict a bounding box of the handwriten component. The model was trained on using https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/master/paragraph_segmentation_dcnn.py and an example is presented in https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/master/paragraph_segmentation_dcnn.ipynb
@@ -195,9 +209,9 @@ class HTR:
         bb_predicted = self.paragraph_segmentation_net(resized_image.as_in_context(self.ctx))
         bb_predicted = bb_predicted[0].asnumpy()
         # all train set was in the middle
-        self.predicted_text = expand_bounding_box(bb_predicted,
-                                                  expand_bb_scale_x=expand_bb_scale_x,
-                                                  expand_bb_scale_y=expand_bb_scale_y)
+        self.predicted_text_area = expand_bounding_box(bb_predicted,
+                                                       expand_bb_scale_x=expand_bb_scale_x,
+                                                       expand_bb_scale_y=expand_bb_scale_y)
         if self.show:
             # s_y, s_x = int(i/2), int(i%2)
             _, ax = plt.subplots(1, figsize=(15, 18))
@@ -208,7 +222,7 @@ class HTR:
             rect = patches.Rectangle((x, y), w, h, fill=False, color="r", ls="--")
             ax.add_patch(rect)
             ax.axis('off')
-        return self.predicted_text
+        return self.predicted_text_area
 
     ## Image Processing
     # Crop the handwriting component out of the original IAM form.
@@ -220,7 +234,7 @@ class HTR:
         """
         # segmented_paragraph_size = (700, 700)
 
-        bb = self.predicted_text
+        bb = self.predicted_text_area
         # cv2.imwrite("test.jpg", image)
         croped_image = crop_handwriting_page(self.image, bb, image_size=segmented_paragraph_size)
         self.croped_image = croped_image
@@ -374,7 +388,7 @@ class HTR:
                     decoded_line_denoisers.append(decoded_line_denoiser)
 
                     line_image = self.line_images_array[i][j]
-                    axs[j].imshow(line_image.squeeze(), cmap='Greys_r')
+                    axs[j].imshow(line_image.asnumpy().squeeze(), cmap='Greys_r')
                     axs[j].set_title(
                         "[AM]: {}\n[BS]: {}\n[D ]: {}\n\n".format(decoded_line_am, decoded_line_bs,
                                                                   decoded_line_denoiser),
@@ -388,6 +402,7 @@ class HTR:
     # Iterative through the test data with the previous tests to obtain the total Character Error Rate (CER).
 
     # %%
+    # TODO! NOT TESTED YET!!!
     # only unix-like and linux
     #
     # git clone https://github.com/usnistgov/SCTK
@@ -498,6 +513,7 @@ class HTR:
     #     - TODO! Add error handling mechanism.
     #     - TODO! Add visualization module to handle inspection
     #     - TODO! Add training classes to handle in one-step all
+    #     - TODO! Split data to faster training and ?inference?
     #     - weighted levenshtein
     #     - re-trained the language model on GBW [~ didn't work too well]
     #     - only penalize non-existing words

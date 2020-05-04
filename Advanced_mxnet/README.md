@@ -94,6 +94,8 @@ The greedy, lexicon search, and beam search outputs present similar and reasonab
 
 ![](https://cdn-images-1.medium.com/max/2000/1*8lnqqlqomgdGshJB12dW1Q.png)
 
+##### Requirement
+At leats 11GB VRAM GPU or 11GB space on RAM.
 
 ### Thanks to
 https://pythonawesome.com/handwritten-text-recognition-ocr-with-mxnet-gluon/
