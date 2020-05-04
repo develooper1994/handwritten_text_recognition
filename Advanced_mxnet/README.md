@@ -97,3 +97,4 @@ The greedy, lexicon search, and beam search outputs present similar and reasonab
 
 ### Thanks to
 https://pythonawesome.com/handwritten-text-recognition-ocr-with-mxnet-gluon/
+https://www.youtube.com/watch?v=xDcOdif4lj0&t=1281s

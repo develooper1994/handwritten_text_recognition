@@ -56,7 +56,7 @@ def get_arg_max(prob):
     :param prob: probability values
     :return: maximum probabilities
     """
-    arg_max = prob.topk(axis=2).asnumpy()
+    arg_max = mx.nd.array(prob).topk(axis=2).asnumpy()
     return decoder_handwriting(arg_max)[0]
 
 
@@ -99,6 +99,10 @@ class HTR:
             else:
                 device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
                                                                                                range(num_device)]
+        elif device == 'cpu':
+            device = mx.cpu()
+        elif device == 'gpu':
+            device = mx.gpu()
         self.ctx = device
         self.show = show
         self.crop = crop
@@ -197,7 +201,7 @@ class HTR:
         if self.show:
             # s_y, s_x = int(i/2), int(i%2)
             _, ax = plt.subplots(1, figsize=(15, 18))
-            ax.imshow(self.image, cmap='Greys_r')
+            ax.imshow(self.image.asnumpy(), cmap='Greys_r')
             (x, y, w, h) = bb_predicted
             image_h, image_w = self.image.shape[-2:]
             (x, y, w, h) = (x * image_w, y * image_h, w * image_w, h * image_h)
@@ -247,7 +251,7 @@ class HTR:
 
         if self.show:
             fig, ax = plt.subplots(1, figsize=(15, 10))
-            ax.imshow(paragraph_segmented_image, cmap='Greys_r')
+            ax.imshow(paragraph_segmented_image.asnumpy(), cmap='Greys_r')
             for j in range(self.predicted_bb.shape[0]):
                 (x, y, w, h) = self.predicted_bb[j]
                 image_h, image_w = paragraph_segmented_image.shape[-2:]
@@ -277,7 +281,7 @@ class HTR:
         if self.show:
             fig, ax = plt.subplots(figsize=(15, 18))
 
-            ax.imshow(paragraph_segmented_image, cmap='Greys_r')
+            ax.imshow(paragraph_segmented_image.asnumpy(), cmap='Greys_r')
             ax.axis('off')
             for line_bb in line_bbs:
                 (x, y, w, h) = line_bb
@@ -303,7 +307,7 @@ class HTR:
         for line_images in self.line_images_array:
             form_character_prob = []
             for i, line_image in enumerate(line_images):
-                line_image = handwriting_recognition_transform(line_image, self.line_image_size)
+                line_image = handwriting_recognition_transform(line_image.asnumpy(), self.line_image_size)
                 line_character_prob = self.handwriting_line_recognition_net(line_image.as_in_context(self.ctx))
                 form_character_prob.append(line_character_prob)
             self.character_probs.append(form_character_prob)
@@ -344,7 +348,7 @@ class HTR:
         decoded_line_bss = []
         decoded_line_denoisers = []
         # really shitty solution but it worked.
-        if self.show:
+        if not self.show:
             for i, form_character_probs in enumerate(self.character_probs):
                 for j, line_character_probs in enumerate(form_character_probs):
                     decoded_line_am = get_arg_max(line_character_probs)
@@ -352,7 +356,7 @@ class HTR:
                     decoded_line_ams.append(decoded_line_am)
                     decoded_line_bs = get_beam_search(line_character_probs)
                     decoded_line_bss.append(decoded_line_bs)
-                    decoded_line_denoiser = self.get_denoised(line_character_probs, ctc_bs=False)
+                    decoded_line_denoiser = self.get_denoised(line_character_probs.asnumpy(), ctc_bs=False)
                     # print("[D ]", decoded_line_denoiser)
                     decoded_line_denoisers.append(decoded_line_denoiser)
         else:
@@ -489,12 +493,30 @@ class HTR:
         print("Choice")
         print(self.generator.generate_sequences(inputs, states, sentence))
 
+    ## ideas:
+    #     - TODO! Change all numeric types to mxnet to gain more speed.
+    #     - TODO! Add error handling mechanism.
+    #     - TODO! Add visualization module to handle inspection
+    #     - TODO! Add training classes to handle in one-step all
+    #     - weighted levenshtein
+    #     - re-trained the language model on GBW [~ didn't work too well]
+    #     - only penalize non-existing words
+    #     - Add single word training for denoiser
+    #     - having 2 best edit distance rather than single one
+    #     - split sentences based on punctuation
+    #     - use CTC loss for ranking
+    #     - meta model to learn to weight the scores from each thing
 
 ## TEST
 # Write test into this class
 class HTR_Test():
-    def __init__(self, image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), show=True):
+    def __init__(self, image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True):
         self.form_size = form_size
+        # if device is None:
+        #     self.device = mx.gpu()
+        # else:
+        #     self.device = mx.cpu()
+        self.device = mx.cpu()
         self.show = show
         # original image
         self.image = mx.image.imread(image_name)  # 0 is grayscale
@@ -504,7 +526,7 @@ class HTR_Test():
         self.image = images[filter_number]
         print("filter number: ", filter_number, "filtered shape:", self.image.shape)
 
-        self.htr = HTR(self.image, form_size=form_size, show=self.show)
+        self.htr = HTR(self.image, form_size=form_size, device=self.device, show=self.show)
 
     def __call__(self, *args, **kwargs):
         self.htr(*args, **kwargs)
@@ -564,16 +586,6 @@ class HTR_Test():
             plt.show()
             fig.savefig("elyaz_thresholds.png")
         return images, titles
-
-    ## ideas:
-    #     - weighted levenshtein
-    #     - re-trained the language model on GBW [~ didn't work too well]
-    #     - only penalize non-existing words
-    #     - Add single word training for denoiser
-    #     - having 2 best edit distance rather than single one
-    #     - split sentences based on punctuation
-    #     - use CTC loss for ranking
-    #     - meta model to learn to weight the scores from each thing
 
 
 if __name__ == "__main__":
