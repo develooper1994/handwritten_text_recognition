@@ -76,21 +76,33 @@ def get_IAMDataset_test():
 #         :param topk: number of maximum probability detected bounding boxes
 #         :param show: Show histogram if show=True. default; show=False
 class HTR:
-    def __init__(self, image, form_size=(1120, 800), device=None, num_device=1, ScliteHelperPATH='../SCTK/bin'):
+    def __init__(self, image, form_size=(1120, 800), device=None, num_device=1, crop=False,
+                 ScliteHelperPATH='../SCTK/bin', show=False, is_test=False):
         """
         Handwritten Text Recognization in one step
         :param image: input image that includes handwritten text
         :param form_size: possible form size
         :param device: device that module running on.
         :param num_device: number of device that module running on.
+        :param crop: cropping detected text area
         :param ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
+        :param show: Show plot if show=True. default; show=False
         """
         if device is None:
-            device = [mx.gpu(i) for i in range(num_device)]
+            if num_device == 1:
+                device = mx.gpu(0)
+            else:
+                device = [mx.gpu(i) for i in range(num_device)]
         elif device == 'auto':
-            device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
+            if num_device == 1:
+                device = mx.gpu(0) if mx.context.num_gpus() > 0 else mx.cpu()
+            else:
+                device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
                                                                                                range(num_device)]
         self.ctx = device
+        self.show = show
+        self.crop = crop
+        self.is_test = is_test
         self.form_size = form_size
         self.predicted_text = 0
         self.croped_image = 0
@@ -102,22 +114,14 @@ class HTR:
         self.topk = 600
         self.line_images_array = []
         self.character_probs = []
-        self.sclite = ScliteHelper(ScliteHelperPATH)
-        ## We use beam search to sample the output of the denoiser
-        self.beam_sampler = nlp.model.BeamSearchSampler(beam_size=20,
-                                                        decoder=self.denoiser.decode_logprob,
-                                                        eos_id=EOS,
-                                                        scorer=nlp.model.BeamSearchScorer(),
-                                                        max_length=150)
-        self.generator = SequenceGenerator(self.beam_sampler, self.language_model, self.vocab, self.ctx,
-                                           self.moses_tokenizer,
-                                           self.moses_detokenizer)
+        if self.is_test:
+            self.sclite = ScliteHelper(ScliteHelperPATH)
 
-        # loads with channels
-        image = image[..., 0]  # converts gray scale
-        # print(image.shape)
-        image = image[np.newaxis, :]  # add batch dim
-        # print(image.shape)
+        # # loads with channels
+        # image = image[..., 0]  # converts gray scale
+        # # print(image.shape)
+        # image = image[np.newaxis, :]  # add batch dim
+        # # print(image.shape)
         self.image = mx.nd.array(image)  # converts to MXNet-NDarray
 
         # paragraph_segmentation_net
@@ -151,20 +155,38 @@ class HTR:
         self.handwriting_line_recognition_net.load_parameters("models/handwriting_line8.params", ctx=device)
         self.handwriting_line_recognition_net.hybridize()
 
+        ## We use beam search to sample the output of the denoiser
+        self.beam_sampler = nlp.model.BeamSearchSampler(beam_size=20,
+                                                        decoder=self.denoiser.decode_logprob,
+                                                        eos_id=EOS,
+                                                        scorer=nlp.model.BeamSearchScorer(),
+                                                        max_length=150)
+        self.generator = SequenceGenerator(self.beam_sampler, self.language_model, self.vocab, self.ctx,
+                                           self.moses_tokenizer,
+                                           self.moses_detokenizer)
+
     def __call__(self, *args, **kwargs):
-        pass
+        self.one_step(*args, **kwargs)
+
+    def one_step(self, expand_bb_scale_x=0.18, expand_bb_scale_y=0.23, segmented_paragraph_size=(700, 700)):
+        self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
+        if self.crop:
+            self.crop_image(segmented_paragraph_size)
+        self.word_detection()
+        self.word_to_line()
+        self.handwriting_recognition_probs()
+        self.qualitative_result()
 
     ## Paragraph segmentation
     # Given the image of a form in the IAM dataset, predict a bounding box of the handwriten component. The model was trained on using https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/master/paragraph_segmentation_dcnn.py and an example is presented in https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/master/paragraph_segmentation_dcnn.ipynb
-    def predict_bbs(self, expand_bb_scale_x=0.18, expand_bb_scale_y=0.23, show=False):
+    def predict_bbs(self, expand_bb_scale_x=0.18, expand_bb_scale_y=0.23):
         """
         Predicts bounding box of given image to detect where the text in the image
-        :param show:  Show histogram if show=True. default; show=False
         :param expand_bb_scale_x: Scale constant along x axis
         :param expand_bb_scale_y: Scale constant along y axis
         :return: predicted bounding box for hole text area
         """
-        resized_image = paragraph_segmentation_transform(self.image, self.form_size)
+        resized_image = paragraph_segmentation_transform(self.image.asnumpy(), self.form_size)
         print(resized_image.shape)
         bb_predicted = self.paragraph_segmentation_net(resized_image.as_in_context(self.ctx))
         bb_predicted = bb_predicted[0].asnumpy()
@@ -172,7 +194,7 @@ class HTR:
         self.predicted_text = expand_bounding_box(bb_predicted,
                                                   expand_bb_scale_x=expand_bb_scale_x,
                                                   expand_bb_scale_y=expand_bb_scale_y)
-        if show:
+        if self.show:
             # s_y, s_x = int(i/2), int(i%2)
             _, ax = plt.subplots(1, figsize=(15, 18))
             ax.imshow(self.image, cmap='Greys_r')
@@ -186,11 +208,10 @@ class HTR:
 
     ## Image Processing
     # Crop the handwriting component out of the original IAM form.
-    def crop_image(self, segmented_paragraph_size=(700, 700), show=False):
+    def crop_image(self, segmented_paragraph_size=(700, 700)):
         """
         Crops predicted bounding box.
         :param segmented_paragraph_size: segmented paragraph size in tuple
-        :param show: Show histogram if show=True. default; show=False
         :return: croped image
         """
         # segmented_paragraph_size = (700, 700)
@@ -202,7 +223,7 @@ class HTR:
 
         # from IPython.display import Image
         # Image(image)
-        if show:
+        if self.show:
             _, _ = plt.subplots(1, figsize=(15, 18))  # Just determines figure size
             plt.imshow(croped_image, cmap='Greys_r')
             cv2.imwrite("test.jpg", croped_image)
@@ -213,7 +234,7 @@ class HTR:
 
     ## Line/word segmentation
     # Given a form with only handwritten text, predict a bounding box for each word.The model was trained with https://github.com / ThomasDelteil / Gluon_OCR_LSTM_CTC / blob / language_model / word_segmentation.py
-    def word_detection(self, show=False):
+    def word_detection(self):
         """
         Word detector with SSD(single shot detection)
         :return: predicted bounding box for each word
@@ -224,7 +245,7 @@ class HTR:
                                                    self.overlap_thres,
                                                    self.topk, self.ctx)
 
-        if show:
+        if self.show:
             fig, ax = plt.subplots(1, figsize=(15, 10))
             ax.imshow(paragraph_segmented_image, cmap='Greys_r')
             for j in range(self.predicted_bb.shape[0]):
@@ -242,10 +263,9 @@ class HTR:
 
     ## Word to line image processing
     # Algorithm to sort then group all words within a line together.
-    def word_to_line(self, show=False):
+    def word_to_line(self):
         """
         Converts word bounding boxes to line bounding boxes by overlapping.
-        :param show: Show histogram if show=True. default; show=False
         :return: croped line images array.
         """
         paragraph_segmented_image = self.image
@@ -254,7 +274,7 @@ class HTR:
         line_images = crop_line_images(paragraph_segmented_image, line_bbs)
         self.line_images_array.append(line_images)
 
-        if show:
+        if self.show:
             fig, ax = plt.subplots(figsize=(15, 18))
 
             ax.imshow(paragraph_segmented_image, cmap='Greys_r')
@@ -274,7 +294,7 @@ class HTR:
 
     ## Handwriting recognition
     # Given each line of text, predict a string of the handwritten text. This network was trained with https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/language_model/handwriting_line_recognition.py
-    def handwriting_recognition(self):
+    def handwriting_recognition_probs(self):
         """
         Calculates character probabilities
         :param line_image_size: Posibble line size
@@ -312,20 +332,19 @@ class HTR:
         return output.strip()
 
     ## Qualitative Result
-
-    def qualitative_result(self, show=False):
+    # !!! Most important function that gives final results. !!!
+    def qualitative_result(self):
         """
         - [AM] Arg Max CTC Decoding
         - [BS] Beam Search CTC Decoding
         - [D ] Adding Text Denoiser
-        :param show: Show histogram if show=True. default; show=False
         :return: [AM], [BS], [D]
         """
         decoded_line_ams = []
         decoded_line_bss = []
         decoded_line_denoisers = []
         # really shitty solution but it worked.
-        if show:
+        if self.show:
             for i, form_character_probs in enumerate(self.character_probs):
                 for j, line_character_probs in enumerate(form_character_probs):
                     decoded_line_am = get_arg_max(line_character_probs)
@@ -343,9 +362,12 @@ class HTR:
                 for j, line_character_probs in enumerate(form_character_probs):
                     decoded_line_am = get_arg_max(line_character_probs)
                     print("[AM]", decoded_line_am)
+                    decoded_line_ams.append(decoded_line_am)
                     decoded_line_bs = get_beam_search(line_character_probs)
+                    decoded_line_bss.append(decoded_line_bs)
                     decoded_line_denoiser = self.get_denoised(line_character_probs, ctc_bs=False)
                     print("[D ]", decoded_line_denoiser)
+                    decoded_line_denoisers.append(decoded_line_denoiser)
 
                     line_image = self.line_images_array[i][j]
                     axs[j].imshow(line_image.squeeze(), cmap='Greys_r')
@@ -356,7 +378,7 @@ class HTR:
                     axs[j].axis('off')
                 axs[-1].imshow(np.zeros(shape=self.line_image_size), cmap='Greys_r')
                 axs[-1].axis('off')
-            # yield decoded_line_am, decoded_line_bs, decoded_line_denoiser
+        return decoded_line_ams, decoded_line_bss, decoded_line_denoisers
 
     ## Quantitative Results
     # Iterative through the test data with the previous tests to obtain the total Character Error Rate (CER).
@@ -388,8 +410,6 @@ class HTR:
         cer, er = self.sclite.get_cer()
         print("Mean CER = {}".format(cer))
         return cer
-
-    # %%
 
     def get_qualitative_results(self, denoise_func):
         self.sclite.clear()
@@ -427,6 +447,34 @@ class HTR:
         print("Mean CER = {}".format(cer))
         return cer
 
+    def get_quantative_all(self):
+        # %% md
+        # CER with pre - segmented lines
+        CER = []
+        CER0 = self.get_qualitative_results_lines(get_arg_max)
+        print(CER0)
+        CER.append(CER0)
+        CER1 = self.get_qualitative_results_lines(self.get_denoised)
+        print(CER1)
+        CER.append(CER1)
+
+        # %% md
+        # CER full pipeline
+        CER2 = self.get_qualitative_results(get_arg_max)
+        print(CER2)
+        CER.append(CER2)
+
+        CER3 = self.get_qualitative_results(get_beam_search)
+        print(CER3)
+        CER.append(CER3)
+
+        # %%
+        cer_denoiser = self.get_qualitative_results(self.get_denoised)
+        print(cer_denoiser)
+        CER.append(cer_denoiser)
+
+        return CER
+
     ## dummy test
     def tasteit(self):
         sentence = "This sentnce has an eror"
@@ -441,38 +489,50 @@ class HTR:
         print("Choice")
         print(self.generator.generate_sequences(inputs, states, sentence))
 
-    ## TEST
-    def test(self):
+
+## TEST
+# Write test into this class
+class HTR_Test():
+    def __init__(self, image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), show=True):
+        self.form_size = form_size
+        self.show = show
         # original image
-        image_name = "elyaz2.jpeg"
-        image = mx.image.imread(image_name)  # 0 is grayscale
-        self.image = image[..., 0]
-        print(image.shape)
+        self.image = mx.image.imread(image_name)  # 0 is grayscale
+        print(self.image.shape)
+        images, titles = self.preprocess()
+        # [img, th1, th2, th3] = images
+        self.image = images[filter_number]
+        print("filter number: ", filter_number, "filtered shape:", self.image.shape)
+
+        self.htr = HTR(self.image, form_size=form_size, show=self.show)
+
+    def __call__(self, *args, **kwargs):
+        self.htr(*args, **kwargs)
 
     def histogram(self, show=False):
-        histogram(self.image)
+        histogram(self.image, show=show or self.show)
 
     def resize(self, show=False):
         """
         Resizes numpy array into form size
-        :param show: Show histogram if show=True. default; show=False
+        :param show: Show plot if show=True. default; show=False
         :return: Resized image in numpy format.
         """
         # TODO: MXNET gpu -> cpu
         image = self.image.asnumpy()
         image_resize = cv2.resize(image, dsize=self.form_size, interpolation=cv2.INTER_CUBIC)
-        if show:
+        if show or self.show:
             fig, ax = plt.subplots(2, 1, figsize=(15, 18))
             print("test_image: ", image.shape)
-            plt.subplot(121), plt.imshow(image.asnumpy(), cmap="gray")
-            plt.subplot(121), plt.title("original image")
-            plt.subplot(121), plt.axis("off")
+            plt.subplot(121), plt.imshow(image, cmap="gray")
+            plt.title("original image")
+            plt.axis("off")
 
             # downsampled image
             print("test_HTR_downsampled: ", image_resize.shape)
             plt.subplot(122), plt.imshow(image_resize, cmap="gray")
-            plt.subplot(122), plt.title("downsampled image")
-            plt.subplot(122), plt.axis("off")
+            plt.title("downsampled image")
+            plt.axis("off")
 
             # save downsampled test_image and review
             plt.imsave("HTR_downsampled.jpeg", image_resize, cmap="gray")
@@ -483,17 +543,19 @@ class HTR:
         Input image preprocess with some tricks.
         :param bottom: lower limit of filter.
         :param top: upper limit of filter.
-        :param show: Show histogram if show=True. default; show=False
+        :param show: Show plot if show=True. default; show=False
         :return: filtered images and titles
         """
-        at = all_togather(self.resize(), bottom, top)
+        img = self.resize()
+        img = img[..., 0]
+        at = all_togather(img, bottom, top)
         (th, laplacian, sobelx, sobely) = at
         [img, th1, th2, th3] = th
         titles = ['Original Image', 'Global Thresholding (v = 127)',
                   'Adaptive Mean Thresholding', 'Adaptive Gaussian Thresholding']
         images = [img, th1, th2, th3]
 
-        if show:
+        if show or self.show:
             fig, ax = plt.subplots(1, figsize=(15, 9))
             for i in range(4):
                 plt.subplot(2, 2, i + 1), plt.imshow(images[i], 'gray')
@@ -503,11 +565,17 @@ class HTR:
             fig.savefig("elyaz_thresholds.png")
         return images, titles
 
+    ## ideas:
+    #     - weighted levenshtein
+    #     - re-trained the language model on GBW [~ didn't work too well]
+    #     - only penalize non-existing words
+    #     - Add single word training for denoiser
+    #     - having 2 best edit distance rather than single one
+    #     - split sentences based on punctuation
+    #     - use CTC loss for ranking
+    #     - meta model to learn to weight the scores from each thing
 
-# Write test into this class
-class HTR_Test():
-    def __init__(self):
-        pass
 
-    def __call__(self, *args, **kwargs):
-        pass
+if __name__ == "__main__":
+    htr_test = HTR_Test(show=True)
+    htr_test()
