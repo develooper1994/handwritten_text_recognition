@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 from os import path, system
 from io import open
-from handwritten_text_recognization.get_models import download_models
 
 here = path.abspath(path.dirname(__file__))
 
@@ -11,9 +10,10 @@ with open("README.md", "r", encoding='utf-8') as fh:
 with open("requirements.txt", "r", encoding='utf-8') as fh:
     requires = fh.read().splitlines()
 
-# download models
-download_models()
-print("Copy models to your project if you want")
+# # download models if you want
+# from handwritten_text_recognization.get_models import download_models
+# download_models()
+# print("Copy models to your project if you want")
 
 # builing doc
 system("pdoc --html --output-dir doc .\Handwritten\ocr")
