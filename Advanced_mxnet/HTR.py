@@ -98,7 +98,7 @@ class HTR:
                 device = mx.gpu(0) if mx.context.num_gpus() > 0 else mx.cpu()
             else:
                 device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
-                                                                                               range(num_device)]
+                                                                                                   range(num_device)]
         elif device == 'cpu':
             device = mx.cpu()
         elif device == 'gpu':
@@ -522,6 +522,7 @@ class HTR:
     #     - split sentences based on punctuation
     #     - use CTC loss for ranking
     #     - meta model to learn to weight the scores from each thing
+
 
 ## TEST
 # Write test into this class

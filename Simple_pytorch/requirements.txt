@@ -1,5 +1,0 @@
-PyTorch
-opencv-python
-scikit-plot
-numpy
-Pillow
