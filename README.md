@@ -4,12 +4,12 @@ These notebooks have been created by [Jonathan Chung](https://github.com/jonomon
 
 ## Setup
 
-`git clone https://github.com/awslabs/handwritten-text-recognition-for-apache-mxnet --recursive`
+`git clone https://github.com/develooper1994/handwritten-text-recognition --recursive`
 
 You need to install SCLITE for WER evaluation
 You can follow the following bash script from this folder:
 
-```bash
+```bash or batch
 cd ..
 git clone https://github.com/usnistgov/SCTK
 cd SCTK
@@ -23,13 +23,9 @@ cd -
 
 You also need hsnwlib
 
-```bash
+```bash or batch
 pip install pybind11 numpy setuptools
-cd ..
-git clone https://github.com/nmslib/hnswlib
-cd hnswlib/python_bindings
-python setup.py install
-cd ../..
+pip install hnswlib
 ```
 
 ## Overview 
@@ -100,3 +96,4 @@ At leats 11GB VRAM GPU or 11GB space on RAM.
 ### Thanks to
 https://pythonawesome.com/handwritten-text-recognition-ocr-with-mxnet-gluon/
 https://www.youtube.com/watch?v=xDcOdif4lj0&t=1281s
+https://github.com/awslabs/handwritten-text-recognition-for-apache-mxnet
