@@ -175,7 +175,10 @@ class IAMDataset(dataset.ArrayDataset):
             self._data_urls = [url_partial.format(data_type="words", filename="words")]
         self._xml_url = "http://www.fki.inf.unibe.ch/DBs/iamDB/data/xml/xml.tgz"
 
-        if credentials == None:
+        # search for credential file. If there is load,
+        # If credentials is entered, it uses it.
+        # otherwise raise an assertion
+        if credentials is None:
             if os.path.isfile(os.path.join(os.path.dirname(__file__), '..', '..', 'credentials.json')):
                 with open(os.path.join(os.path.dirname(__file__), '..', '..', 'credentials.json')) as f:
                     credentials = json.load(f)

@@ -1,6 +1,32 @@
 # Handwritten Text Recognition (OCR) with MXNet Gluon 
 
 These notebooks have been created by [Jonathan Chung](https://github.com/jonomon), as part of his internship as Applied Scientist @ Amazon AI, in collaboration with [Thomas Delteil](https://github.com/ThomasDelteil) who built the original prototype.
+## Usage
+Parameters: 
+        """
+
+        image: input image that includes handwritten text
+        form_size: possible form size
+        device: device that module running on.
+        num_device: number of device that module running on.
+        crop: cropping detected text area
+        ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
+        show: Show plot if show=True. default; show=False
+        """
+HTR Usage: 
+    """    
+
+    htr = HTR()
+    htr()
+    """
+
+HTR Usage: 
+    """    
+
+    htr_test = HTR_Test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
+    htr_test()
+    """
+
 
 ## Setup
 

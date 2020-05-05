@@ -6,6 +6,7 @@ import cv2
 def histogram(image, show=False):
     """
     Gives histogram, normalized cdf and bins values in numpy type
+    :param image: Image of numpy array.
     :param show: Show histogram if show=True. default; show=False
     :return: histogram, normalized cdf and bins
     """

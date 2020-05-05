@@ -1,42 +1,28 @@
-import difflib
-import importlib
-import math
 import random
-import string
 
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import cv2
-from PIL import Image
-from skimage import transform as skimage_tf, exposure
-import IPython.display
-from IPython.display import Image
-from tqdm import tqdm
-import leven
-
 import gluonnlp as nlp
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
 import mxnet as mx
-from mxnet.gluon.data.vision import datasets, transforms
+import numpy as np
+from skimage import exposure
+from tqdm import tqdm
 
-from ocr.utils.expand_bounding_box import expand_bounding_box
-from ocr.utils.sclite_helper import ScliteHelper
-from ocr.utils.word_to_line import sort_bbs_line_by_line, crop_line_images
-from ocr.utils.iam_dataset import IAMDataset, resize_image, crop_image, crop_handwriting_page
-from ocr.utils.encoder_decoder import Denoiser, ALPHABET, encode_char, decode_char, EOS, BOS
-from ocr.utils.beam_search import ctcBeamSearch
-
-import ocr.utils.denoiser_utils
-import ocr.utils.beam_search
-
-from ocr.utils.denoiser_utils import SequenceGenerator
-
-from ocr.paragraph_segmentation_dcnn import SegmentationNetwork, paragraph_segmentation_transform
-from ocr.word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
 from ocr.handwriting_line_recognition import Network as HandwritingRecognitionNet, handwriting_recognition_transform
 from ocr.handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
+from ocr.paragraph_segmentation_dcnn import SegmentationNetwork, paragraph_segmentation_transform
+from ocr.utils.beam_search import ctcBeamSearch
+from ocr.utils.denoiser_utils import SequenceGenerator
+from ocr.utils.encoder_decoder import Denoiser, ALPHABET, encode_char, EOS, BOS
+from ocr.utils.expand_bounding_box import expand_bounding_box
+from ocr.utils.iam_dataset import IAMDataset, crop_handwriting_page
+from ocr.utils.preprocess import histogram, all_togather
+from ocr.utils.sclite_helper import ScliteHelper
+from ocr.utils.word_to_line import sort_bbs_line_by_line, crop_line_images
+from ocr.word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
 
-from ocr.utils.preprocess import histogram, thresholds, CLAHE, filters, all_togather
+from get_models import download_models
 
 random.seed(1)
 
@@ -66,8 +52,8 @@ def get_beam_search(prob, width=5):
 
 
 ## HTR Class to handle all mess
-def get_IAMDataset_test():
-    test_ds = IAMDataset("form_original", train=False)
+def get_IAMDataset_test(credentials):
+    test_ds = IAMDataset("form_original", credentials=credentials, train=False)
     return test_ds
 
 
@@ -82,7 +68,15 @@ class HTR:
         Handwritten Text Recognization in one step
         :param image: input image that includes handwritten text
         :param form_size: possible form size
-        :param device: device that module running on.
+        :param device:
+        If it is None:
+            If num_device==1: uses gpu if there is any gpu
+            else: uses num_device gpu if there is any gpu
+        If it is 'auto':
+            If num_device==1: uses gpu if there is any gpu
+            else: uses num_device gpu if there is any gpu
+        if it is 'cpu': uses one, num_device-1 indexed cpu
+        if it is 'gpu': uses one, num_device-1 indexed gpu
         :param num_device: number of device that module running on.
         :param crop: cropping detected text area
         :param ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
@@ -97,8 +91,9 @@ class HTR:
             if num_device == 1:
                 device = mx.gpu(0) if mx.context.num_gpus() > 0 else mx.cpu()
             else:
-                device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
-                                                                                                   range(num_device)]
+                device = [mx.gpu() if mx.context.num_gpus() > 0 else mx.cpu() for i in range(num_device)]
+                # device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
+                #                                                                                    range(num_device)]
         elif device == 'cpu':
             device = mx.cpu()
         elif device == 'gpu':
@@ -120,6 +115,8 @@ class HTR:
         self.character_probs = []
         if self.is_test:
             self.sclite = ScliteHelper(ScliteHelperPATH)
+
+        download_models()
 
         # # loads with channels
         # image = image[..., 0]  # converts gray scale
@@ -415,6 +412,11 @@ class HTR:
     # cd -
 
     def get_qualitative_results_lines(self, denoise_func):
+        """
+        Get all quantative "character error results" for each line
+        :param denoise_func: denoiser function
+        :return: CER values
+        """
         self.sclite.clear()
         test_ds_line = IAMDataset("line", train=False)
         for i in tqdm(range(1, len(test_ds_line))):
@@ -430,7 +432,23 @@ class HTR:
         print("Mean CER = {}".format(cer))
         return cer
 
-    def get_qualitative_results(self, denoise_func):
+    def get_qualitative_results(self, denoise_func, credentials=None):
+        """
+        Get all quantative "character error results" full pipeline
+        :param credentials: credentials to access and download IAMdataset
+        :param denoise_func: denoiser function
+        :return: CER values
+        """
+
+        error_message = """
+        Please enter creditentials in json string format to access, download and preprocess IAMdataset
+        For example;
+        {
+          "username": "<USERNAME>",
+          "password": "<PASSWORD>"
+        }"""
+        assert not credentials is None, error_message
+
         self.sclite.clear()
         test_ds = get_IAMDataset_test()
         for i in tqdm(range(1, len(test_ds))):
@@ -467,6 +485,10 @@ class HTR:
         return cer
 
     def get_quantative_all(self):
+        """
+        Get all quantative "character error results"
+        :return: CER values
+        """
         # %% md
         # CER with pre - segmented lines
         CER = []
@@ -496,6 +518,10 @@ class HTR:
 
     ## dummy test
     def tasteit(self):
+        """
+        Just a dummy test
+        :return: None
+        """
         sentence = "This sentnce has an eror"
         src_seq, src_valid_length = encode_char(sentence)
         src_seq = mx.nd.array([src_seq], ctx=self.ctx)
@@ -527,13 +553,46 @@ class HTR:
 ## TEST
 # Write test into this class
 class HTR_Test():
-    def __init__(self, image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True):
+    def __init__(self, image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, num_device=1,
+                 show=True):
+        """
+        Handwritten test initializer
+        :param image_name: Image name with full path
+            default; "elyaz2.jpeg"
+        :param filter_number: There is 4 different filters 0-3
+            default; 1
+        :param form_size: poossible form size
+            default; (1120, 800)
+        :param device:
+        If it is None:
+            If num_device==1: uses gpu if there is any gpu
+            else: uses num_device gpu if there is any gpu
+        If it is 'auto':
+            If num_device==1: uses gpu if there is any gpu
+            else: uses num_device gpu if there is any gpu
+        if it is 'cpu': uses one, num_device-1 indexed cpu
+        if it is 'gpu': uses one, num_device-1 indexed gpu
+        :param num_device: number of device that module running on.
+        :param show: Show plot if show=True. default; show=False
+        """
         self.form_size = form_size
-        # if device is None:
-        #     self.device = mx.gpu()
-        # else:
-        #     self.device = mx.cpu()
-        self.device = mx.cpu()
+        if device is None:
+            if num_device == 1:
+                device = mx.gpu(0)
+            else:
+                device = [mx.gpu(i) for i in range(num_device)]
+        elif device == 'auto':
+            if num_device == 1:
+                device = mx.gpu(num_device - 1) if mx.context.num_gpus() > 0 else mx.cpu(num_device - 1)
+            else:
+                device = [mx.gpu() if mx.context.num_gpus() > 0 else mx.cpu() for i in range(num_device)]
+                # device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
+                #                                                                                    range(num_device)]
+        elif device == 'cpu':
+            device = mx.cpu(num_device - 1)
+        elif device == 'gpu':
+            device = mx.gpu(num_device - 1)
+        self.device = device
         self.show = show
         # original image
         self.image = mx.image.imread(image_name)  # 0 is grayscale
@@ -549,7 +608,12 @@ class HTR_Test():
         self.htr(*args, **kwargs)
 
     def histogram(self, show=False):
-        histogram(self.image, show=show or self.show)
+        """
+        Gives histogram, normalized cdf and bins values in numpy type
+        :param show: Show plot if show=True. default; show=False
+        :return: histogram, normalized cdf and bins
+        """
+        return histogram(self.image, show=show or self.show)
 
     def resize(self, show=False):
         """
