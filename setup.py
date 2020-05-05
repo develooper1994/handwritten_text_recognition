@@ -11,16 +11,16 @@ with open("requirements.txt", "r", encoding='utf-8') as fh:
     requires = fh.read().splitlines()
 
 # # download models if you want
-# from handwritten_text_recognization.get_models import download_models
+# from recognizer.get_models import download_models
 # download_models()
 # print("Copy models to your project if you want")
 
 # builing doc
-system("pdoc --html --output-dir doc .\Handwritten\ocr")
-system("pdoc --html --output-dir doc .\Handwritten\HTR.py .\Handwritten\get_models.py")
+system(r"pdoc --html --output-dir doc .\recognize\ocr")
+system(r"pdoc --html --output-dir doc .\recognize\recognizer.py .\recognize\get_models.py")
 
 setup(
-    name="handwritten_text_recognization",  # Replace with your own username
+    name="recognize",  # Replace with your own username
     version="0.0.1",
     author="Mustafa Selçuk Çağlar",
     author_email="selcukcaglar08@gmail.com",
@@ -65,4 +65,4 @@ def set_SCTK():
     system("cd -")
 
 
-set_SCTK()
+# set_SCTK()
