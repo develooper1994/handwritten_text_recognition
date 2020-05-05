@@ -14,7 +14,10 @@ mxnet
 mxboard
 Pillow
 pyenchant
-skimage
+scikit-image
 sympound
 weighted_levenshtein
 hnswlib
+pdoc3
+pybind11
+setuptools

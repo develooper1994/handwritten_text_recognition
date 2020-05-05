@@ -1,10 +1,8 @@
 # Handwritten Text Recognition (OCR) with MXNet Gluon 
-
+handwritten text recognition with mxnet and gluon. Thanks to https://pythonawesome.com/handwritten-text-recognition-ocr-with-mxnet-gluon/
 These notebooks have been created by [Jonathan Chung](https://github.com/jonomon), as part of his internship as Applied Scientist @ Amazon AI, in collaboration with [Thomas Delteil](https://github.com/ThomasDelteil) who built the original prototype.
 ## Usage
-Parameters: 
-        """
-
+Parameters:
         image: input image that includes handwritten text
         form_size: possible form size
         device: device that module running on.
@@ -12,21 +10,39 @@ Parameters:
         crop: cropping detected text area
         ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
         show: Show plot if show=True. default; show=False
-        """
 HTR Usage: 
-    """    
-
     htr = HTR()
     htr()
-    """
 
-HTR Usage: 
-    """    
-
+HTR Usage:
     htr_test = HTR_Test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
     htr_test()
+    
+## Requirements:
+    scikit_image
+    scipy
+    matplotlib
+    tqdm
+    mxnet_cu102mkl
+    pandas
+    nltk
+    mxboard
+    numpy
+    gluonnlp
+    leven
+    ipython
+    mxnet
+    mxboard
+    Pillow
+    pyenchant
+    scikit-image
+    sympound
+    weighted_levenshtein
+    hnswlib
+    pdoc3
+    pybind11
+    setuptools
     """
-
 
 ## Setup
 

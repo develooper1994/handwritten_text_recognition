@@ -1,6 +1,7 @@
 from setuptools import setup, find_packages
-from os import path
+from os import path, system
 from io import open
+from handwritten_text_recognization.get_models import download_models
 
 here = path.abspath(path.dirname(__file__))
 
@@ -10,8 +11,16 @@ with open("README.md", "r", encoding='utf-8') as fh:
 with open("requirements.txt", "r", encoding='utf-8') as fh:
     requires = fh.read().splitlines()
 
+# download models
+download_models()
+print("Copy models to your project if you want")
+
+# builing doc
+system("pdoc --html --output-dir doc .\Handwritten\ocr")
+system("pdoc --html --output-dir doc .\Handwritten\HTR.py .\Handwritten\get_models.py")
+
 setup(
-    name="Handwritten-text-recognization",  # Replace with your own username
+    name="handwritten_text_recognization",  # Replace with your own username
     version="0.0.1",
     author="Mustafa Selçuk Çağlar",
     author_email="selcukcaglar08@gmail.com",
@@ -39,6 +48,21 @@ setup(
         'Source': 'https://github.com/develooper1994/handwritten-text-recognition',
     },
     install_requires=requires,
+    include_package_data=True
 )
 
 print("Please install SCTK tools from https://github.com/usnistgov/SCTK to get qualitative result")
+
+
+def set_SCTK():
+    system("git clone https://github.com/usnistgov/SCTK")
+    system("cd SCTK")
+    system("""export CXXFLAGS="-std=c++11" && make config""")
+    system("make all")
+    system("make check")
+    system("make install")
+    system("make doc")
+    system("cd -")
+
+
+set_SCTK()

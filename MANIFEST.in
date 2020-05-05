@@ -5,6 +5,20 @@ include *.md
 
 # Include the license file
 include LICENSE.txt
+include READ.me
+include Handwritten/credentials.json.example
+include Handwritten/*.ipynb
+include Handwritten/ocr/utils/*.ipynb
+
+include Handwritten/*.jpg
+include Handwritten/*.png
+include Handwritten/*.pdf
+include Handwritten/ocr/utils/*.jpg
+include Handwritten/results/*
+
+include doc/*
+include doc/ocr/*
+
 
 # Include the data files
 recursive-include data *
