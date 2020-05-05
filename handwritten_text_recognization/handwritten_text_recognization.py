@@ -51,7 +51,7 @@ def get_beam_search(prob, width=5):
     return possibilities[0]
 
 
-## HTR Class to handle all mess
+## handwritten_text_recognization Class to handle all mess
 def get_IAMDataset_test(credentials):
     test_ds = IAMDataset("form_original", credentials=credentials, train=False)
     return test_ds
@@ -61,7 +61,7 @@ def get_IAMDataset_test(credentials):
 #         :param overlap_thres: overlapping constant
 #         :param topk: number of maximum probability detected bounding boxes
 #         :param show: Show histogram if show=True. default; show=False
-class HTR:
+class handwritten_text_recognization:
     def __init__(self, image, form_size=(1120, 800), device=None, num_device=1, crop=False,
                  ScliteHelperPATH='../SCTK/bin', show=False, is_test=False):
         """
@@ -552,7 +552,7 @@ class HTR:
 
 ## TEST
 # Write test into this class
-class HTR_Test():
+class handwritten_text_recognization_test():
     def __init__(self, image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, num_device=1,
                  show=True):
         """
@@ -602,7 +602,7 @@ class HTR_Test():
         self.image = images[filter_number]
         print("filter number: ", filter_number, "filtered shape:", self.image.shape)
 
-        self.htr = HTR(self.image, form_size=form_size, device=self.device, show=self.show)
+        self.htr = handwritten_text_recognization(self.image, form_size=form_size, device=self.device, show=self.show)
 
     def __call__(self, *args, **kwargs):
         self.htr(*args, **kwargs)
@@ -670,5 +670,5 @@ class HTR_Test():
 
 
 if __name__ == "__main__":
-    htr_test = HTR_Test(show=True)
+    htr_test = handwritten_text_recognization_test(show=True)
     htr_test()

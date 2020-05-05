@@ -10,12 +10,12 @@ Parameters:
         crop: cropping detected text area
         ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
         show: Show plot if show=True. default; show=False
-HTR Usage: 
-    htr = HTR()
+handwritten_text_recognization Usage: 
+    htr = handwritten_text_recognization()
     htr()
 
-HTR Usage:
-    htr_test = HTR_Test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
+handwritten_text_recognization Usage:
+    htr_test = handwritten_text_recognization_test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
     htr_test()
     
 ## Requirements:
