@@ -1,5 +1,4 @@
 # Handwritten Text Recognition (OCR) with MXNet Gluon 
-handwritten text recognition with mxnet and gluon. Thanks to https://pythonawesome.com/handwritten-text-recognition-ocr-with-mxnet-gluon/
 These notebooks have been created by [Jonathan Chung](https://github.com/jonomon), as part of his internship as Applied Scientist @ Amazon AI, in collaboration with [Thomas Delteil](https://github.com/ThomasDelteil) who built the original prototype.
 ## Usage
 Parameters:
