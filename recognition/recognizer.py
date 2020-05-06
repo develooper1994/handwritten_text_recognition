@@ -12,9 +12,11 @@
 #     - split sentences based on punctuation
 #     - use CTC loss for ranking
 #     - meta model to learn to weight the scores from each thing
-
+from pprint import pprint
 import random
 import time
+from os import listdir
+from os.path import isfile, join
 
 import cv2
 import gluonnlp as nlp
@@ -105,7 +107,7 @@ def select_device(device=None, num_device=1):
 #         :param show: Show histogram if show=True. default; show=False
 class recognize:
     def __init__(self, image, form_size=(1120, 800), device=None, num_device=1, crop=False,
-                 ScliteHelperPATH='../SCTK/bin', show=False, is_test=False):
+                 ScliteHelperPATH=None, show=False, is_test=False):
         """
         Handwritten Text Recognization in one step
         :param image: input image in numpy.array object that includes handwritten text
@@ -125,23 +127,6 @@ class recognize:
         :param show: Show plot if show=True. default; show=False
         """
         # TODO! make device selection in mxnet way like "device=mx.gpu(0)". It is better way to do it than strings.
-        # if device is None:
-        #     if num_device == 1:
-        #         device = mx.gpu(0)
-        #     else:
-        #         device = [mx.gpu(i) for i in range(num_device)]
-        # elif device == 'auto':
-        #     if num_device == 1:
-        #         device = mx.gpu(0) if mx.context.num_gpus() > 0 else mx.cpu()
-        #     else:
-        #         device = [mx.gpu() if mx.context.num_gpus() > 0 else mx.cpu() for i in range(num_device)]
-        #         # device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
-        #         #                                                                                    range(num_device)]
-        # elif device == 'cpu':
-        #     device = mx.cpu()
-        # elif device == 'gpu':
-        #     device = mx.gpu()
-        # self.device = device
         self.device = select_device(device, num_device)
         self.show = show
         self.crop = crop
@@ -157,6 +142,8 @@ class recognize:
         self.topk = 600
         self.line_images_array = []
         self.character_probs = []
+        if ScliteHelperPATH is None:
+            ScliteHelperPATH = '../SCTK/bin'
         if self.is_test:
             self.sclite = ScliteHelper(ScliteHelperPATH)
 
@@ -203,7 +190,8 @@ class recognize:
 
         # handwriting_line_recognition_net
         self.handwriting_line_recognition_net = HandwritingRecognitionNet(rnn_hidden_states=512,
-                                                                          rnn_layers=2, ctx=self.device, max_seq_len=160)
+                                                                          rnn_layers=2, ctx=self.device,
+                                                                          max_seq_len=160)
         self.handwriting_line_recognition_net.load_parameters("models/handwriting_line8.params", ctx=self.device)
         self.handwriting_line_recognition_net.hybridize()
         print("Handwriting line segmentation model loading")
@@ -608,7 +596,8 @@ class recognize:
 ## TEST
 # Write test into this class
 class recognize_test():
-    def __init__(self, image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, num_device=1,
+    def __init__(self, image_name="tests/TurkishHandwritten/elyaz2.jpeg", filter_number=1, form_size=(1120, 800),
+                 device=None, num_device=1,
                  show=True):
         """
         Handwritten test initializer
@@ -631,23 +620,6 @@ class recognize_test():
         :param show: Show plot if show=True. default; show=False
         """
         self.form_size = form_size
-        # if device is None:
-        #     if num_device == 1:
-        #         device = mx.gpu(0)
-        #     else:
-        #         device = [mx.gpu(i) for i in range(num_device)]
-        # elif device == 'auto':
-        #     if num_device == 1:
-        #         device = mx.gpu(num_device - 1) if mx.context.num_gpus() > 0 else mx.cpu(num_device - 1)
-        #     else:
-        #         device = [mx.gpu() if mx.context.num_gpus() > 0 else mx.cpu() for i in range(num_device)]
-        #         # device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
-        #         #                                                                                    range(num_device)]
-        # elif device == 'cpu':
-        #     device = mx.cpu(num_device - 1)
-        # elif device == 'gpu':
-        #     device = mx.gpu(num_device - 1)
-        # self.device = device
         self.device = select_device(device, num_device)
         self.show = show
         # original image
@@ -712,8 +684,6 @@ class recognize_test():
         :param show: Show plot if show=True. default; show=False
         :return: filtered images and titles
         """
-        # img = self.resize()
-        # img = img[..., 0]
         at = all_togather(self.image, bottom, top)
         (th, laplacian, sobelx, sobely) = at
         [img, th1, th2, th3] = th
@@ -751,13 +721,20 @@ class recognize_IAM_random_test():
 
 
 class recognize_IAM_test():
-    def __init__(self, num_image, device=None, num_device=1):
+    def __init__(self, num_image=4, device=None, num_device=1):
         self.device = select_device(device=device, num_device=num_device)
-        test_ds = IAMDataset("form_original", train=False)
+        test_ds_path_images = "tests/IAM8/"
+        test_ds_images = [f for f in listdir(test_ds_path_images) if isfile(join(test_ds_path_images, f))]
+        self.image_name = test_ds_images[num_image]
+        self.image_path = test_ds_path_images + self.image_name
 
-        n = random.random()  # random selection
-        n = int(n * len(test_ds))
-        self.image, self.text = test_ds[n]
+        test_ds_path_results = "tests/IAM8/results"
+        test_ds_results = [f for f in listdir(test_ds_path_results) if isfile(join(test_ds_path_results, f))]
+        self.text_name = test_ds_results[num_image]
+        self.text_path = test_ds_path_results + self.text_name
+
+        image = mx.image.imread(self.image_path)
+        self.image = image.asnumpy()
         self.recog = recognize(self.image, device=device)
 
     def __call__(self, *args, **kwargs):
@@ -771,15 +748,22 @@ class recognize_IAM_test():
 if __name__ == "__main__":
     device = "cpu"
 
+    # %% recognize_test class
     # htr_test = recognize_test(show=True, device=device)
     # result = htr_test()
 
+    # %% recognize class
     # image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")
     # image = image.asnumpy()
     # recog = recognize(image, device=device)
     # result = recog()
-    # print(result)
 
-    IAM_recog = recognize_IAM_random_test(device)
+    # %% recognize_IAM_random_test class
+    # IAM_recog = recognize_IAM_random_test(device)
+    # result = IAM_recog()
+
+    # %% recognize_IAM_test class
+    IAM_recog = recognize_IAM_test(4, device)
     result = IAM_recog()
-    print(result)
+
+    pprint(result)

@@ -9,20 +9,28 @@ Parameters:
         crop: cropping detected text area
         ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
         show: Show plot if show=True. default; show=False
+
 recognize Usage:
 
-    htr = recognize()
-    htr()
+    image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")
+    image = image.asnumpy()
+    recog = recognize(image, device=device)
+    result = recog()
 
 recognize_test Usage:
 
-    htr_test = recognize_test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
-    htr_test()
+    htr_test = recognize_test(show=True, device=device)
+    result = htr_test()
     
 recognize_IAM_random_test Usage:
 
-    htr_test = recognize_test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
-    htr_test()
+    IAM_recog = recognize_IAM_random_test(device)
+    result = IAM_recog()
+    
+recognize_IAM_random_test Usage:
+
+    IAM_recog = recognize_IAM_random_test(device)
+    result = IAM_recog()
     
 ## Requirements:
     scikit_image
@@ -45,9 +53,10 @@ recognize_IAM_random_test Usage:
     sympound
     weighted_levenshtein
     hnswlib
-    pdoc3
     pybind11
     setuptools
+    pdoc3
+    pprint
     """
 
 ## Setup
