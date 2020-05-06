@@ -66,17 +66,44 @@ def get_arg_max(prob):
 
 
 def get_beam_search(prob, width=5):
+    """
+    Helps to get beam search probabilities
+    :param prob: Probabilities
+    :param width: Beam witdh
+    :return: beam search probabilities
+    """
     possibilities = ctcBeamSearch(prob.softmax()[0].asnumpy(), alphabet_encoding, None, width)
     return possibilities[0]
 
 
 ## recognizer Class to handle all mess
 def get_IAMDataset_test(credentials):
+    """
+    Helps to get IAM dataset
+    :param credentials: Account information to access IAM dataset.
+    If you don't have you can have from http://www.fki.inf.unibe.ch/DBs/iamDB/iLogin/index.php
+    Register and write your account information to credentials.json
+    :return: iam dataset iterator
+    """
     test_ds = IAMDataset("form_original", credentials=credentials, train=False)
     return test_ds
 
 
 def select_device(device=None, num_device=1):
+    """
+    Helps to select possible devices.
+    :param device:
+    If it is None:
+        If num_device==1: uses gpu if there is any gpu
+        else: uses num_device gpu if there is any gpu
+    If it is 'auto':
+        If num_device==1: uses gpu if there is any gpu
+        else: uses num_device gpu if there is any gpu
+    if it is 'cpu': uses one, num_device-1 indexed cpu
+    if it is 'gpu': uses one, num_device-1 indexed gpu
+    :param num_device: number of device that module running on.
+    :return: possible devices
+    """
     if device is None:
         if num_device == 1:
             device_object = mx.gpu(0)
@@ -106,6 +133,14 @@ def select_device(device=None, num_device=1):
 #         :param topk: number of maximum probability detected bounding boxes
 #         :param show: Show histogram if show=True. default; show=False
 class recognize:
+    """
+    The main, One-step module is it.
+    Usage example:
+        image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")
+        image = image.asnumpy()
+        recog = recognize(image, device=device)
+        result = recog()
+    """
     def __init__(self, image, form_size=(1120, 800), device=None, num_device=1, crop=False,
                  ScliteHelperPATH=None, show=False, is_test=False):
         """
@@ -722,6 +757,21 @@ class recognize_IAM_random_test():
 
 class recognize_IAM_test():
     def __init__(self, num_image=4, device=None, num_device=1):
+        """
+        Test recognize class with subset of IAM dataset. Images and predicted results are in the 'tests/IAM8' folder.
+        :param num_image: image number. 1-8
+        :param device:
+        If it is None:
+            If num_device==1: uses gpu if there is any gpu
+            else: uses num_device gpu if there is any gpu
+        If it is 'auto':
+            If num_device==1: uses gpu if there is any gpu
+            else: uses num_device gpu if there is any gpu
+        if it is 'cpu': uses one, num_device-1 indexed cpu
+        if it is 'gpu': uses one, num_device-1 indexed gpu
+        :param num_device: number of device that module running on.
+        """
+        assert num_image<1 or num_image>8, "Please enter number between 1-8"
         self.device = select_device(device=device, num_device=num_device)
         test_ds_path_images = "tests/IAM8/"
         test_ds_images = [f for f in listdir(test_ds_path_images) if isfile(join(test_ds_path_images, f))]
@@ -763,7 +813,7 @@ if __name__ == "__main__":
     # result = IAM_recog()
 
     # %% recognize_IAM_test class
-    IAM_recog = recognize_IAM_test(4, device)
-    result = IAM_recog()
+    # IAM_recog = recognize_IAM_test(4, device)
+    # result = IAM_recog()
 
     pprint(result)
