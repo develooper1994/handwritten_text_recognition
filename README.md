@@ -2,36 +2,52 @@
 These notebooks have been created by [Jonathan Chung](https://github.com/jonomon), as part of his internship as Applied Scientist @ Amazon AI, in collaboration with [Thomas Delteil](https://github.com/ThomasDelteil) who built the original prototype.
 ## Usage
 Parameters:
-        image: input image that includes handwritten text
-        form_size: possible form size
-        device: device that module running on.
-        num_device: number of device that module running on.
-        crop: cropping detected text area
-        ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
-        show: Show plot if show=True. default; show=False
 
+    Handwritten Text Recognization in one step
+    image: input image in numpy.array object that includes handwritten text
+    form_size: possible form size
+    device:
+    If it is None:
+        If num_device==1: uses gpu if there is any gpu
+        else: uses num_device gpu if there is any gpu
+    If it is 'auto':
+        If num_device==1: uses gpu if there is any gpu
+        else: uses num_device gpu if there is any gpu
+    if it is 'cpu': uses one, num_device-1 indexed cpu
+    if it is 'gpu': uses one, num_device-1 indexed gpu
+    num_device: number of device that module running on.
+    cropping detected text area
+    ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
+    show: Show plot if show=True. default; show=False
+    is_test: If it is True than activate SCTK tool to get quantative results.
 recognize Usage:
 
     image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")
     image = image.asnumpy()
     recog = recognize(image, device=device)
     result = recog()
-
+recognize class returns:
+    
+    results = {
+    'predicted_text_area': predicted_text_area,
+    'croped_image': croped_image,
+    'predicted_bb': predicted_bb,
+    'line_images_array': line_images_array,
+    'character_probs': character_probs,
+    'decoded': decoded
+    }
 recognize_test Usage:
 
     htr_test = recognize_test(show=True, device=device)
     result = htr_test()
-    
 recognize_IAM_random_test Usage:
 
     IAM_recog = recognize_IAM_random_test(device)
     result = IAM_recog()
-    
 recognize_IAM_random_test Usage:
 
     IAM_recog = recognize_IAM_random_test(device)
     result = IAM_recog()
-    
 ## Requirements:
     scikit_image
     scipy
@@ -158,3 +174,16 @@ https://github.com/awslabs/handwritten-text-recognition-for-apache-mxnet
 ### Should Look at
 https://rrc.cvc.uab.es/
 https://www.pyimagesearch.com/2018/08/20/opencv-text-detection-east-text-detector/
+
+### Further steps
+    Handwriting reading process is developing gradually.
+    -Read "born digital"
+    -Read printed "born digital"
+    -Read handwritten by tablet or any input device
+    -Handwritten recorded under perfect conditions
+    -Ability to read horizontally
+    -Crowded historical texts
+    -Signage etc. perception
+    -.......
+    -Extract information from video taken in the wilderness
+     or in the city (without any prior correction, like human)

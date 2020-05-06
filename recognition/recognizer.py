@@ -4,6 +4,7 @@
 #     - TODO! Add visualization module to handle inspection
 #     - TODO! Add training classes to handle in one-step all
 #     - TODO! Split data to faster training and ?inference?
+#     - TODO! Logging instead of printing
 #     - weighted levenshtein
 #     - re-trained the language model on GBW [~ didn't work too well]
 #     - only penalize non-existing words
@@ -104,6 +105,8 @@ def select_device(device=None, num_device=1):
     :param num_device: number of device that module running on.
     :return: possible devices
     """
+    num_device = abs(num_device)
+    assert num_device != 0, "Please enter bigger than 1"
     if device is None:
         if num_device == 1:
             device_object = mx.gpu(0)
@@ -141,12 +144,15 @@ class recognize:
         recog = recognize(image, device=device)
         result = recog()
     """
-    def __init__(self, image, form_size=(1120, 800), device=None, num_device=1, crop=False,
+
+    def __init__(self, image, net_parameter_paths=None, form_size=(1120, 800), device=None, num_device=1, crop=False,
                  ScliteHelperPATH=None, show=False, is_test=False):
         """
         Handwritten Text Recognization in one step
         :param image: input image in numpy.array object that includes handwritten text
+        :param net_parameter_paths: Network parameter paths
         :param form_size: possible form size
+            DEFAULT=(1120, 800)
         :param device:
         If it is None:
             If num_device==1: uses gpu if there is any gpu
@@ -156,10 +162,17 @@ class recognize:
             else: uses num_device gpu if there is any gpu
         if it is 'cpu': uses one, num_device-1 indexed cpu
         if it is 'gpu': uses one, num_device-1 indexed gpu
+            DEFAULT=NONE
         :param num_device: number of device that module running on.
+            DEFAULT=num_device
         :param crop: cropping detected text area
+            DEFAULT=False
         :param ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
+            DEFAULT=None
         :param show: Show plot if show=True. default; show=False
+            DEFAULT=False
+        :param is_test: If it is True than activate SCTK tool to get quantative results.
+            DEFAULT=False
         """
         # TODO! make device selection in mxnet way like "device=mx.gpu(0)". It is better way to do it than strings.
         self.device = select_device(device, num_device)
@@ -195,27 +208,35 @@ class recognize:
         # self.image = self.image[np.newaxis, :]  # add batch dim
         # # print(image.shape)
 
+        # net_parameter_paths
+        net_parameter_paths = self.load_parameter_paths(net_parameter_paths)
+        self.net_parameter_paths = net_parameter_paths
+        self.paragraph_segmentation_net_parameter_path = self.net_parameter_paths[0]
+        self.word_segmentation_net_parameter_path = self.net_parameter_paths[1]
+        self.denoiser_net_parameter_path = self.net_parameter_paths[2]
+        self.handwriting_line_recognition_net_parameter_path = self.net_parameter_paths[3]
+
         # paragraph_segmentation_net
-        self.paragraph_segmentation_net = SegmentationNetwork(ctx=self.device)
-        self.paragraph_segmentation_net.cnn.load_parameters("models/paragraph_segmentation2.params", ctx=self.device)
-        self.paragraph_segmentation_net.hybridize()
         print("Paragraph segmentation model loading")
+        self.paragraph_segmentation_net = SegmentationNetwork(ctx=self.device)
+        self.paragraph_segmentation_net.cnn.load_parameters(self.paragraph_segmentation_net_parameter_path, ctx=self.device)
+        self.paragraph_segmentation_net.hybridize()
 
         # word_segmentation_net
-        self.word_segmentation_net = WordSegmentationNet(2, ctx=self.device)
-        self.word_segmentation_net.load_parameters("models/word_segmentation2.params")
-        self.word_segmentation_net.hybridize()
         print("Word segmentation model loading")
+        self.word_segmentation_net = WordSegmentationNet(2, ctx=self.device)
+        self.word_segmentation_net.load_parameters(self.word_segmentation_net_parameter_path)
+        self.word_segmentation_net.hybridize()
 
         ## Denoising the text output
         # We use a seq2seq denoiser to translate noisy input to better output
+        print("Denoiser model loading")
         self.FEATURE_LEN = 150
         self.denoiser = Denoiser(alphabet_size=len(ALPHABET), max_src_length=self.FEATURE_LEN,
                                  max_tgt_length=self.FEATURE_LEN,
                                  num_heads=16, embed_size=256, num_layers=2)
-        self.denoiser.load_parameters('models/denoiser2.params', ctx=self.device)
+        self.denoiser.load_parameters(self.denoiser_net_parameter_path, ctx=self.device)
         self.denoiser.hybridize(static_alloc=True)
-        print("Denoiser model loading")
 
         ## We use a language model in order to rank the propositions from the denoiser
         self.language_model, self.vocab = nlp.model.big_rnn_lm_2048_512(dataset_name='gbw', pretrained=True,
@@ -224,24 +245,38 @@ class recognize:
         self.moses_detokenizer = nlp.data.SacreMosesDetokenizer()
 
         # handwriting_line_recognition_net
+        print("Handwriting line segmentation model loading")
         self.handwriting_line_recognition_net = HandwritingRecognitionNet(rnn_hidden_states=512,
                                                                           rnn_layers=2, ctx=self.device,
                                                                           max_seq_len=160)
-        self.handwriting_line_recognition_net.load_parameters("models/handwriting_line8.params", ctx=self.device)
+        self.handwriting_line_recognition_net.load_parameters(self.handwriting_line_recognition_net_parameter_path, ctx=self.device)
         self.handwriting_line_recognition_net.hybridize()
-        print("Handwriting line segmentation model loading")
 
         ## We use beam search to sample the output of the denoiser
+        print("Beam sampler created")
         self.beam_sampler = nlp.model.BeamSearchSampler(beam_size=20,
                                                         decoder=self.denoiser.decode_logprob,
                                                         eos_id=EOS,
                                                         scorer=nlp.model.BeamSearchScorer(),
                                                         max_length=150)
-        print("Beam sampler created")
+
+        print("Sequence generator created")
         self.generator = SequenceGenerator(self.beam_sampler, self.language_model, self.vocab, self.device,
                                            self.moses_tokenizer,
                                            self.moses_detokenizer)
-        print("Sequence generator created")
+
+    def load_parameter_paths(self, net_parameter_paths=None):
+        assert not isinstance(net_parameter_paths, list) or isinstance(net_parameter_paths, tuple), \
+            "Please enter net_parameter_paths in List or tuple type"
+
+        if net_parameter_paths is None:
+            net_parameter_paths = [
+                "models/paragraph_segmentation2.params",
+                "models/word_segmentation2.params",
+                "models/denoiser2.params",
+                "models/handwriting_line8.params"
+            ]
+        return net_parameter_paths
 
     def __call__(self, *args, **kwargs):
         return self.one_step(*args, **kwargs)
@@ -250,17 +285,20 @@ class recognize:
         """
         Calculate all in of them in one (long) step
         :param expand_bb_scale_x: Scale constant along x axis
+            DEFAULT=0.18
         :param expand_bb_scale_y: Scale constant along y axis
+            DEFAULT=0.23
         :param segmented_paragraph_size: segmented paragraph size in tuple
+            DEFAULT=(700, 700)
         :return: all calculated results.
-                results = {
-                    'predicted_text_area': predicted_text_area,
-                    'croped_image': croped_image,
-                    'predicted_bb': predicted_bb,
-                    'line_images_array': line_images_array,
-                    'character_probs': character_probs,
-                    'decoded': decoded
-                }
+            results = {
+                'predicted_text_area': predicted_text_area,
+                'croped_image': croped_image,
+                'predicted_bb': predicted_bb,
+                'line_images_array': line_images_array,
+                'character_probs': character_probs,
+                'decoded': decoded
+            }
         """
         predicted_text_area = self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
 
@@ -290,7 +328,9 @@ class recognize:
         """
         Predicts bounding box of given image to detect where the text in the image
         :param expand_bb_scale_x: Scale constant along x axis
+            DEFAULT=0.18
         :param expand_bb_scale_y: Scale constant along y axis
+            DEFAULT=0.23
         :return: predicted bounding box for hole text area
         """
         resized_image = paragraph_segmentation_transform(self.image, self.form_size)
@@ -319,6 +359,7 @@ class recognize:
         """
         Crops predicted bounding box.
         :param segmented_paragraph_size: segmented paragraph size in tuple
+            DEFAULT=(700, 700)
         :return: croped image
         """
         # segmented_paragraph_size = (700, 700)
@@ -402,7 +443,6 @@ class recognize:
     def handwriting_recognition_probs(self):
         """
         Calculates character probabilities
-        :param line_image_size: Posibble line size
         :return: Character probabilities
         """
         for line_images in self.line_images_array:
@@ -420,6 +460,7 @@ class recognize:
         Returns denoised encoder
         :param prob: Probabilities
         :param ctc_bs: Contextual switch
+            DEFAULT=False
         :return: Denoised encoder
         """
         if ctc_bs:  # Using ctc beam search before denoising yields only limited improvements a is very slow
@@ -530,6 +571,7 @@ class recognize:
         Get all quantative "character error results" full pipeline
         :param credentials: credentials to access and download IAMdataset
         :param denoise_func: denoiser function
+            DEFAULT=None
         :return: CER values
         """
 
@@ -631,17 +673,21 @@ class recognize:
 ## TEST
 # Write test into this class
 class recognize_test():
+    """
+    Handwritten recognition test with one particular image in numpy type
+    """
+
     def __init__(self, image_name="tests/TurkishHandwritten/elyaz2.jpeg", filter_number=1, form_size=(1120, 800),
                  device=None, num_device=1,
                  show=True):
         """
-        Handwritten test initializer
+        Handwritten recognition test initializer
         :param image_name: Image name with full path
-            default; "elyaz2.jpeg"
+            DEFAULT="elyaz2.jpeg"
         :param filter_number: There is 4 different filters 0-3
-            default; 1
+            DEFAULT=1
         :param form_size: poossible form size
-            default; (1120, 800)
+            DEFAULT=(1120, 800)
         :param device:
         If it is None:
             If num_device==1: uses gpu if there is any gpu
@@ -651,8 +697,11 @@ class recognize_test():
             else: uses num_device gpu if there is any gpu
         if it is 'cpu': uses one, num_device-1 indexed cpu
         if it is 'gpu': uses one, num_device-1 indexed gpu
+            DEFAULT=None
         :param num_device: number of device that module running on.
+            DEFAULT=1
         :param show: Show plot if show=True. default; show=False
+            DEFAULT=True
         """
         self.form_size = form_size
         self.device = select_device(device, num_device)
@@ -680,6 +729,7 @@ class recognize_test():
         """
         Gives histogram, normalized cdf and bins values in numpy type
         :param show: Show plot if show=True. default; show=False
+            DEFAULT=False
         :return: histogram, normalized cdf and bins
         """
         return histogram(self.image, show=show or self.show)
@@ -688,6 +738,7 @@ class recognize_test():
         """
         Resizes numpy array into form size
         :param show: Show plot if show=True. default; show=False
+            DEFAULT=False
         :return: Resized image in numpy format.
         """
         # TODO: MXNET gpu -> cpu
@@ -715,8 +766,11 @@ class recognize_test():
         """
         Input image preprocess with some tricks.
         :param bottom: lower limit of filter.
+            DEFAULT=127
         :param top: upper limit of filter.
+            DEFAULT=255
         :param show: Show plot if show=True. default; show=False
+            DEFAULT=False
         :return: filtered images and titles
         """
         at = all_togather(self.image, bottom, top)
@@ -738,7 +792,26 @@ class recognize_test():
 
 
 class recognize_IAM_random_test():
+    """
+    Handwritten recognition test select randomly from IAM dataset
+    """
+
     def __init__(self, device=None, num_device=1):
+        """
+        Handwritten recognition random image test initializer
+        :param device:
+        If it is None:
+            If num_device==1: uses gpu if there is any gpu
+            else: uses num_device gpu if there is any gpu
+        If it is 'auto':
+            If num_device==1: uses gpu if there is any gpu
+            else: uses num_device gpu if there is any gpu
+        if it is 'cpu': uses one, num_device-1 indexed cpu
+        if it is 'gpu': uses one, num_device-1 indexed gpu
+            DEFAULT=None
+        :param num_device: number of device that module running on.
+            DEFAULT=1
+        """
         self.device = select_device(device=device, num_device=num_device)
         test_ds = IAMDataset("form_original", train=False)
 
@@ -756,6 +829,10 @@ class recognize_IAM_random_test():
 
 
 class recognize_IAM_test():
+    """
+    Handwritten recognition test select from subset of IAM dataset. images at tests/IAM8 folder
+    """
+
     def __init__(self, num_image=4, device=None, num_device=1):
         """
         Test recognize class with subset of IAM dataset. Images and predicted results are in the 'tests/IAM8' folder.
@@ -771,7 +848,7 @@ class recognize_IAM_test():
         if it is 'gpu': uses one, num_device-1 indexed gpu
         :param num_device: number of device that module running on.
         """
-        assert num_image<1 or num_image>8, "Please enter number between 1-8"
+        assert not(num_image < 1 or num_image > 8), "Please enter number between 1-8"
         self.device = select_device(device=device, num_device=num_device)
         test_ds_path_images = "tests/IAM8/"
         test_ds_images = [f for f in listdir(test_ds_path_images) if isfile(join(test_ds_path_images, f))]
@@ -813,7 +890,7 @@ if __name__ == "__main__":
     # result = IAM_recog()
 
     # %% recognize_IAM_test class
-    # IAM_recog = recognize_IAM_test(4, device)
-    # result = IAM_recog()
+    IAM_recog = recognize_IAM_test(4, device)
+    result = IAM_recog()
 
     pprint(result)

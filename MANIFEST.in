@@ -7,14 +7,34 @@ include *.md
 include LICENSE.txt
 include READ.me
 include recognition/credentials.json.example
-include recognization/*.ipynb
-include recognization/ocr/utils/*.ipynb
+include recognition/*.ipynb
+include recognition/notebooks/*.ipynb
+include recognition/ocr/utils/*.ipynb
 
-include recognization/*.jpg
-include recognization/*.png
-include recognization/*.pdf
-include recognization/ocr/utils/*.jpg
-include recognization/results/*
+include recognition/*.jpg
+include recognition/tests/*.jpg
+include recognition/tests/EnglishHandwritten/*.jpg
+include recognition/tests/Histograms/*.jpg
+include recognition/tests/TurkishHandwritten/*.jpg
+include recognition/tests/IAM8/*.jpg
+
+include recognition/*.png
+include recognition/tests/*.png
+include recognition/tests/EnglishHandwritten/*.png
+include recognition/tests/Histograms/*.png
+include recognition/tests/TurkishHandwritten/*.png
+include recognition/tests/IAM8/*.png
+
+include recognition/*.pdf
+include recognition/tests/*.pdf
+include recognition/tests/EnglishHandwritten/*.pdf
+include recognition/tests/Histograms/*.pdf
+include recognition/tests/TurkishHandwritten/*.pdf
+include recognition/tests/IAM8/*.pdf
+
+
+include recognition/ocr/utils/*.jpg
+include recognition/results/*
 
 include doc/*
 include doc/ocr/*
