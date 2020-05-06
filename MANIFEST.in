@@ -6,15 +6,15 @@ include *.md
 # Include the license file
 include LICENSE.txt
 include READ.me
-include Handwritten/credentials.json.example
-include Handwritten/*.ipynb
-include Handwritten/ocr/utils/*.ipynb
+include recognition/credentials.json.example
+include recognization/*.ipynb
+include recognization/ocr/utils/*.ipynb
 
-include Handwritten/*.jpg
-include Handwritten/*.png
-include Handwritten/*.pdf
-include Handwritten/ocr/utils/*.jpg
-include Handwritten/results/*
+include recognization/*.jpg
+include recognization/*.png
+include recognization/*.pdf
+include recognization/ocr/utils/*.jpg
+include recognization/results/*
 
 include doc/*
 include doc/ocr/*

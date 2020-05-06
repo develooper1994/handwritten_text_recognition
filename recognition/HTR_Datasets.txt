@@ -1,0 +1,6 @@
+http://www.fki.inf.unibe.ch/databases
+1) Bentham: http://transcriptorium.eu/datasets/bentham-collection/
+2) IAM: http://www.fki.inf.unibe.ch/databases/iam-handwriting-database
+3) RIMES: http://www.a2ialab.com/doku.php?id=rimes_database:start
+4) Saint Gall: http://www.fki.inf.unibe.ch/databases/iam-historical-document-database/saint-gall-database
+5) Washington: http://www.fki.inf.unibe.ch/databases/iam-historical-document-database/washington-database

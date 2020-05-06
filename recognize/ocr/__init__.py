@@ -1,1 +1,0 @@
-from recognize.ocr import *

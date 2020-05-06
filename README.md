@@ -9,14 +9,19 @@ Parameters:
         crop: cropping detected text area
         ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
         show: Show plot if show=True. default; show=False
-recognization Usage:
+recognize Usage:
 
-    htr = recognization()
+    htr = recognize()
     htr()
 
-recognization_test Usage:
+recognize_test Usage:
 
-    htr_test = recognization_test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
+    htr_test = recognize_test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
+    htr_test()
+    
+recognize_IAM_random_test Usage:
+
+    htr_test = recognize_test(image_name="elyaz2.jpeg", filter_number=1, form_size=(1120, 800), device=None, show=True)
     htr_test()
     
 ## Requirements:
@@ -140,3 +145,7 @@ At leats 11GB VRAM GPU or 11GB space on RAM.
 https://pythonawesome.com/handwritten-text-recognition-ocr-with-mxnet-gluon/
 https://www.youtube.com/watch?v=xDcOdif4lj0&t=1281s
 https://github.com/awslabs/handwritten-text-recognition-for-apache-mxnet
+
+### Should Look at
+https://rrc.cvc.uab.es/
+https://www.pyimagesearch.com/2018/08/20/opencv-text-detection-east-text-detector/

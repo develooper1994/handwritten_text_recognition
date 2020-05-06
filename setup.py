@@ -20,11 +20,11 @@ system(r"pdoc --html --output-dir doc .\recognize\ocr")
 system(r"pdoc --html --output-dir doc .\recognize\recognizer.py .\recognize\get_models.py")
 
 setup(
-    name="recognize",  # Replace with your own username
+    name="recognition",  # Replace with your own username
     version="0.0.1",
     author="Mustafa Selçuk Çağlar",
     author_email="selcukcaglar08@gmail.com",
-    description="Handwritten text recognization using mxnet",
+    description="Handwritten text recognition using mxnet",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/develooper1994/handwritten-text-recognition",
