@@ -1,10 +1,9 @@
 ## ideas:
-#     - TODO! make __init__ and most waiting functions async
 #     - TODO! Change all numeric types to mxnet to gain more speed.
 #     - TODO! Add error handling mechanism.
 #     - TODO! Add visualization module to handle inspection
 #     - TODO! Add training classes to handle in one-step all
-#     - TODO! Split data to faster training and ?inference?
+#     - TODO! Split data(mxnet split) to faster training and ?inference?
 #     - TODO! Logging instead of printing
 #     - weighted levenshtein
 #     - re-trained the language model on GBW [~ didn't work too well]
@@ -16,6 +15,7 @@
 #     - meta model to learn to weight the scores from each thing
 import random
 from pprint import pprint
+import asyncio
 
 import gluonnlp as nlp
 import matplotlib.patches as patches
@@ -202,46 +202,19 @@ class recognize:
         # # print(image.shape)
 
     def __set_default_networks(self, net_parameter_pathname):
-        net_parameter_pathname = self.load_parameter_paths(net_parameter_pathname)
-        self.net_parameter_paths = net_parameter_pathname
-        self.denoiser_net_parameter_path = self.net_parameter_paths[0]
-        self.handwriting_line_recognition_net_parameter_path = self.net_parameter_paths[1]
-        self.paragraph_segmentation_net_parameter_path = self.net_parameter_paths[2]
-        self.word_segmentation_net_parameter_path = self.net_parameter_paths[3]
-        # paragraph_segmentation_net
-        print("Paragraph segmentation model loading")
-        self.paragraph_segmentation_net = SegmentationNetwork(ctx=self.device)
-        self.paragraph_segmentation_net.cnn.load_parameters(self.paragraph_segmentation_net_parameter_path,
-                                                            ctx=self.device)
-        self.paragraph_segmentation_net.hybridize()
-        # word_segmentation_net
-        print("Word segmentation model loading")
-        self.word_segmentation_net = WordSegmentationNet(2, ctx=self.device)
-        self.word_segmentation_net.load_parameters(self.word_segmentation_net_parameter_path)
-        self.word_segmentation_net.hybridize()
-        # %% Denoising the text output
-        # We use a seq2seq denoiser to translate noisy input to better output
-        print("Denoiser model loading")
-        self.FEATURE_LEN = 150
-        self.denoiser = Denoiser(alphabet_size=len(ALPHABET), max_src_length=self.FEATURE_LEN,
-                                 max_tgt_length=self.FEATURE_LEN,
-                                 num_heads=16, embed_size=256, num_layers=2)
-        self.denoiser.load_parameters(self.denoiser_net_parameter_path, ctx=self.device)
-        self.denoiser.hybridize(static_alloc=True)
+        # !!! slower while loding async this function !!!
+        # run it async
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.__load_all_networks(net_parameter_pathname))
+
         ## We use a language model in order to rank the propositions from the denoiser
         self.language_model, self.vocab = nlp.model.big_rnn_lm_2048_512(dataset_name='gbw', pretrained=True,
                                                                         ctx=self.device)
         self.moses_tokenizer = nlp.data.SacreMosesTokenizer()
         self.moses_detokenizer = nlp.data.SacreMosesDetokenizer()
-        # handwriting_line_recognition_net
-        print("Handwriting line segmentation model loading")
-        self.handwriting_line_recognition_net = HandwritingRecognitionNet(rnn_hidden_states=512,
-                                                                          rnn_layers=2, ctx=self.device,
-                                                                          max_seq_len=160)
-        self.handwriting_line_recognition_net.load_parameters(self.handwriting_line_recognition_net_parameter_path,
-                                                              ctx=self.device)
-        self.handwriting_line_recognition_net.hybridize()
-        ## We use beam search to sample the output of the denoiser
+
+        # !!! Slowest loading!
+        # We use beam search to sample the output of the denoiser
         print("Beam sampler created")
         self.beam_sampler = nlp.model.BeamSearchSampler(beam_size=20,
                                                         decoder=self.denoiser.decode_logprob,
@@ -252,6 +225,62 @@ class recognize:
         self.generator = SequenceGenerator(self.beam_sampler, self.language_model, self.vocab, self.device,
                                            self.moses_tokenizer,
                                            self.moses_detokenizer)
+
+    async def __load_all_networks(self, net_parameter_pathname):
+        net_parameter_pathname = self.load_parameter_paths(net_parameter_pathname)
+        self.net_parameter_paths = net_parameter_pathname
+        self.denoiser_net_parameter_path = self.net_parameter_paths[0]
+        self.handwriting_line_recognition_net_parameter_path = self.net_parameter_paths[1]
+        self.paragraph_segmentation_net_parameter_path = self.net_parameter_paths[2]
+        self.word_segmentation_net_parameter_path = self.net_parameter_paths[3]
+
+        # load networks async. more stable time variation
+        await asyncio.wait([
+            self.__load_HandwritingRecognitionNet(),
+            self.__load_DenoiserNet(),
+            self.__load_WordSegmentationNet(),
+            self.__load_SegmentationNetwork()
+        ])
+
+    async def __load_HandwritingRecognitionNet(self):
+        await asyncio.sleep(0.01)  # event loop runs function for a while suspends
+        print("Handwriting line segmentation model loading")
+        self.handwriting_line_recognition_net = HandwritingRecognitionNet(rnn_hidden_states=512,
+                                                                          rnn_layers=2, ctx=self.device,
+                                                                          max_seq_len=160)
+        self.handwriting_line_recognition_net.load_parameters(self.handwriting_line_recognition_net_parameter_path,
+                                                              ctx=self.device)
+        self.handwriting_line_recognition_net.hybridize()
+        print("Handwriting line segmentation model loading completed")
+
+    async def __load_DenoiserNet(self):
+        await asyncio.sleep(0.01)  # event loop runs function for a while suspends
+        # We use a seq2seq denoiser to translate noisy input to better output
+        print("Denoiser model loading")
+        self.FEATURE_LEN = 150
+        self.denoiser = Denoiser(alphabet_size=len(ALPHABET), max_src_length=self.FEATURE_LEN,
+                                 max_tgt_length=self.FEATURE_LEN,
+                                 num_heads=16, embed_size=256, num_layers=2)
+        self.denoiser.load_parameters(self.denoiser_net_parameter_path, ctx=self.device)
+        self.denoiser.hybridize(static_alloc=True)
+        print("Denoiser model loading completed")
+
+    async def __load_WordSegmentationNet(self):
+        await asyncio.sleep(0.01)  # event loop runs function for a while suspends
+        print("Word segmentation model loading")
+        self.word_segmentation_net = WordSegmentationNet(2, ctx=self.device)
+        self.word_segmentation_net.load_parameters(self.word_segmentation_net_parameter_path)
+        self.word_segmentation_net.hybridize()
+        print("Word segmentation model loading completed")
+
+    async def __load_SegmentationNetwork(self):
+        await asyncio.sleep(0.01)  # event loop runs function for a while suspends
+        print("Paragraph segmentation model loading")
+        self.paragraph_segmentation_net = SegmentationNetwork(ctx=self.device)
+        self.paragraph_segmentation_net.cnn.load_parameters(self.paragraph_segmentation_net_parameter_path,
+                                                            ctx=self.device)
+        self.paragraph_segmentation_net.hybridize()
+        print("Paragraph segmentation model loading completed")
 
     def load_parameter_paths(self, net_parameter_pathname=None):
         # assert not isinstance(net_parameter_pathname, list) or isinstance(net_parameter_pathname, tuple), \
@@ -348,6 +377,7 @@ class recognize:
         }
         return results
 
+    #%% network functions
     ## Paragraph segmentation
     # Given the image of a form in the IAM dataset, predict a bounding box of the handwriten component. The model was trained on using https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/master/paragraph_segmentation_dcnn.py and an example is presented in https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/master/paragraph_segmentation_dcnn.ipynb
     def predict_bbs(self, expand_bb_scale_x=0.18, expand_bb_scale_y=0.23):
@@ -506,6 +536,7 @@ class recognize:
         output = self.generator.generate_sequences(inputs, states, text)
         return output.strip()
 
+    # %% getting results
     ## Qualitative Result
     # !!! Most important function that gives final results. !!!
     def qualitative_result(self):
@@ -704,7 +735,15 @@ if __name__ == "__main__":
     # %% recognize class
     image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")
     image = image.asnumpy()
+    # import time
+    # t0 = time.time()
     recog = recognize(image, device=device)
+
+    # async -> 12.5510573387146 second
+    # sync -> 12.63401460647583
+    # print("Ellepsed time:", time.time()-t0)
+
+
     result = recog()
 
     pprint(result)

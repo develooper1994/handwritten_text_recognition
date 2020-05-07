@@ -1,4 +1,3 @@
-# TODO! Make it multithread or async to speed downlaod
 # TODO! Log instead of print
 import os
 import zipfile
