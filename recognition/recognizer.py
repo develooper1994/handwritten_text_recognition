@@ -1,4 +1,5 @@
 ## ideas:
+#     - TODO! make __init__ and most waiting functions async
 #     - TODO! Change all numeric types to mxnet to gain more speed.
 #     - TODO! Add error handling mechanism.
 #     - TODO! Add visualization module to handle inspection

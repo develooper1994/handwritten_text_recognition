@@ -10,18 +10,14 @@ with open("README.md", "r", encoding='utf-8') as fh:
 with open("requirements.txt", "r", encoding='utf-8') as fh:
     requires = fh.read().splitlines()
 
-# # download models if you want
-# from recognizer.get_models import download_models
-# download_models()
-# print("Copy models to your project if you want")
-
 # builing doc
-system(r"pdoc --html --output-dir doc .\recognize\ocr")
-system(r"pdoc --html --output-dir doc .\recognize\recognizer.py .\recognize\get_models.py")
+system(r"pdoc --html --output-dir doc .\recognition\ocr")
+system(r"pdoc --html --output-dir doc .\recognition\recognizer.py .\recognition\get_models.py")
+system(r"pdoc --html --output-dir doc .\recognition\tests\tests.py")
 
 setup(
     name="recognition",  # Replace with your own username
-    version="0.0.1",
+    version="0.0.2",
     author="Mustafa Selçuk Çağlar",
     author_email="selcukcaglar08@gmail.com",
     description="Handwritten text recognition using mxnet",
@@ -51,8 +47,6 @@ setup(
     include_package_data=True
 )
 
-print("Please install SCTK tools from https://github.com/usnistgov/SCTK to get qualitative result")
-
 
 def set_SCTK():
     system("git clone https://github.com/usnistgov/SCTK")
@@ -64,5 +58,5 @@ def set_SCTK():
     system("make doc")
     system("cd -")
 
-
+print("Please install SCTK tools from https://github.com/usnistgov/SCTK to get qualitative result")
 # set_SCTK()
