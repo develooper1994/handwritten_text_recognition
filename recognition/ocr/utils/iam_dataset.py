@@ -1,26 +1,21 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import glob
+import json
+import logging
 import os
+import pickle
+import sys
 import tarfile
 import urllib
-import sys
-import time
-import glob
-import pickle
 import xml.etree.ElementTree as ET
+import zipfile
+
 import cv2
-import json
 import numpy as np
 import pandas as pd
-import zipfile
-import matplotlib.pyplot as plt
-import logging
-
 from mxnet.gluon.data import dataset
-from mxnet import nd
-
-from .expand_bounding_box import expand_bounding_box
 
 
 def crop_image(image, bb):

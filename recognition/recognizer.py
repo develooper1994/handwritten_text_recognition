@@ -50,10 +50,6 @@ random.seed(1)
 # 3) word to line(to protect the information context) ->
 # 4) word image to string line by line
 
-#         :param min_c: minimum probability of detected image
-#         :param overlap_thres: overlapping constant
-#         :param topk: number of maximum probability detected bounding boxes
-#         :param show: Show histogram if show=True. default; show=False
 class recognize:
     """
     The main, One-step module is it.
