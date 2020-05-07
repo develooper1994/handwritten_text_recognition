@@ -13,13 +13,9 @@
 #     - split sentences based on punctuation
 #     - use CTC loss for ranking
 #     - meta model to learn to weight the scores from each thing
-from pprint import pprint
 import random
-import time
-from os import listdir
-from os.path import isfile, join
+from pprint import pprint
 
-import cv2
 import gluonnlp as nlp
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
@@ -29,7 +25,6 @@ from skimage import exposure
 from tqdm import tqdm
 
 from recognition.get_models import download_models
-
 from recognition.ocr.handwriting_line_recognition import Network as HandwritingRecognitionNet, \
     handwriting_recognition_transform
 from recognition.ocr.handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
@@ -39,7 +34,6 @@ from recognition.ocr.utils.denoiser_utils import SequenceGenerator
 from recognition.ocr.utils.encoder_decoder import Denoiser, ALPHABET, encode_char, EOS, BOS
 from recognition.ocr.utils.expand_bounding_box import expand_bounding_box
 from recognition.ocr.utils.iam_dataset import IAMDataset, crop_handwriting_page
-from recognition.ocr.utils.preprocess import histogram, all_togather
 from recognition.ocr.utils.sclite_helper import ScliteHelper
 from recognition.ocr.utils.word_to_line import sort_bbs_line_by_line, crop_line_images
 from recognition.ocr.word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
@@ -90,7 +84,7 @@ def get_IAMDataset_test(credentials):
     return test_ds
 
 
-def select_device(device=None, num_device=1):
+def device_selecttion_helper(device=None, num_device=1):
     """
     Helps to select possible devices.
     :param device:
@@ -145,26 +139,18 @@ class recognize:
         result = recog()
     """
 
-    def __init__(self, image, net_parameters=None, form_size=(1120, 800), device=None, num_device=1, crop=False,
+    def __init__(self, image, net_parameter_pathname=None, form_size=(1120, 800), device=None, crop=False,
                  ScliteHelperPATH=None, show=False, is_test=False):
         """
         Handwritten Text Recognization in one step
         :param image: input image in numpy.array object that includes handwritten text
-        :param net_parameters: Network parameter paths
+        :param net_parameter_pathname: network(model) parameter paths with name
         :param form_size: possible form size
             DEFAULT=(1120, 800)
-        :param device:
+        :param device: determines the device that the model(or network) will work on
+            DEFAULT=None
         If it is None:
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        If it is 'auto':
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        if it is 'cpu': uses one, num_device-1 indexed cpu
-        if it is 'gpu': uses one, num_device-1 indexed gpu
-            DEFAULT=NONE
-        :param num_device: number of device that module running on.
-            DEFAULT=num_device
+            device = mx.cpu()
         :param crop: cropping detected text area
             DEFAULT=False
         :param ScliteHelperPATH: Tool that helps to get quantitative results. https://github.com/usnistgov/SCTK
@@ -174,8 +160,16 @@ class recognize:
         :param is_test: If it is True than activate SCTK tool to get quantative results.
             DEFAULT=False
         """
-        # TODO! make device selection in mxnet way like "device=mx.gpu(0)". It is better way to do it than strings.
-        self.device = select_device(device, num_device)
+        #%% Default-Parameters
+        self.__set_default_parameters(ScliteHelperPATH, crop, device, form_size, image, is_test, show)
+
+        #%% Network-Parameters
+        self.__set_default_networks(net_parameter_pathname)
+
+    def __set_default_parameters(self, ScliteHelperPATH, crop, device, form_size, image, is_test, show):
+        if device is None:
+            device = mx.cpu()
+        self.device = device
         self.show = show
         self.crop = crop
         self.is_test = is_test
@@ -194,9 +188,7 @@ class recognize:
             ScliteHelperPATH = '../SCTK/bin'
         if self.is_test:
             self.sclite = ScliteHelper(ScliteHelperPATH)
-
-        download_models()
-
+        # download_models()
         assert type(image) is np.ndarray, "Please enter numpy array"
         self.image = image
         # self.image = mx.nd.array(image)  # converts to MXNet-NDarray
@@ -208,27 +200,25 @@ class recognize:
         # self.image = self.image[np.newaxis, :]  # add batch dim
         # # print(image.shape)
 
-        #%% net_parameters
-        net_parameters = self.load_parameter_paths(net_parameters)
-        self.net_parameter_paths = net_parameters
-        self.paragraph_segmentation_net_parameter_path = self.net_parameter_paths[0]
-        self.word_segmentation_net_parameter_path = self.net_parameter_paths[1]
-        self.denoiser_net_parameter_path = self.net_parameter_paths[2]
-        self.handwriting_line_recognition_net_parameter_path = self.net_parameter_paths[3]
-
+    def __set_default_networks(self, net_parameter_pathname):
+        net_parameter_pathname = self.load_parameter_paths(net_parameter_pathname)
+        self.net_parameter_paths = net_parameter_pathname
+        self.denoiser_net_parameter_path = self.net_parameter_paths[0]
+        self.handwriting_line_recognition_net_parameter_path = self.net_parameter_paths[1]
+        self.paragraph_segmentation_net_parameter_path = self.net_parameter_paths[2]
+        self.word_segmentation_net_parameter_path = self.net_parameter_paths[3]
         # paragraph_segmentation_net
         print("Paragraph segmentation model loading")
         self.paragraph_segmentation_net = SegmentationNetwork(ctx=self.device)
-        self.paragraph_segmentation_net.cnn.load_parameters(self.paragraph_segmentation_net_parameter_path, ctx=self.device)
+        self.paragraph_segmentation_net.cnn.load_parameters(self.paragraph_segmentation_net_parameter_path,
+                                                            ctx=self.device)
         self.paragraph_segmentation_net.hybridize()
-
         # word_segmentation_net
         print("Word segmentation model loading")
         self.word_segmentation_net = WordSegmentationNet(2, ctx=self.device)
         self.word_segmentation_net.load_parameters(self.word_segmentation_net_parameter_path)
         self.word_segmentation_net.hybridize()
-
-        #%% Denoising the text output
+        # %% Denoising the text output
         # We use a seq2seq denoiser to translate noisy input to better output
         print("Denoiser model loading")
         self.FEATURE_LEN = 150
@@ -237,21 +227,19 @@ class recognize:
                                  num_heads=16, embed_size=256, num_layers=2)
         self.denoiser.load_parameters(self.denoiser_net_parameter_path, ctx=self.device)
         self.denoiser.hybridize(static_alloc=True)
-
         ## We use a language model in order to rank the propositions from the denoiser
         self.language_model, self.vocab = nlp.model.big_rnn_lm_2048_512(dataset_name='gbw', pretrained=True,
                                                                         ctx=self.device)
         self.moses_tokenizer = nlp.data.SacreMosesTokenizer()
         self.moses_detokenizer = nlp.data.SacreMosesDetokenizer()
-
         # handwriting_line_recognition_net
         print("Handwriting line segmentation model loading")
         self.handwriting_line_recognition_net = HandwritingRecognitionNet(rnn_hidden_states=512,
                                                                           rnn_layers=2, ctx=self.device,
                                                                           max_seq_len=160)
-        self.handwriting_line_recognition_net.load_parameters(self.handwriting_line_recognition_net_parameter_path, ctx=self.device)
+        self.handwriting_line_recognition_net.load_parameters(self.handwriting_line_recognition_net_parameter_path,
+                                                              ctx=self.device)
         self.handwriting_line_recognition_net.hybridize()
-
         ## We use beam search to sample the output of the denoiser
         print("Beam sampler created")
         self.beam_sampler = nlp.model.BeamSearchSampler(beam_size=20,
@@ -259,24 +247,26 @@ class recognize:
                                                         eos_id=EOS,
                                                         scorer=nlp.model.BeamSearchScorer(),
                                                         max_length=150)
-
         print("Sequence generator created")
         self.generator = SequenceGenerator(self.beam_sampler, self.language_model, self.vocab, self.device,
                                            self.moses_tokenizer,
                                            self.moses_detokenizer)
 
-    def load_parameter_paths(self, net_parameters=None):
-        assert not isinstance(net_parameters, list) or isinstance(net_parameters, tuple), \
-            "Please enter net_parameters in List or tuple type"
+    def load_parameter_paths(self, net_parameter_pathname=None):
+        # assert not isinstance(net_parameter_pathname, list) or isinstance(net_parameter_pathname, tuple), \
+        #     "Please enter net_parameter_pathname in List or tuple type"
 
-        if net_parameters is None:
-            net_parameters = [
+        if net_parameter_pathname is None:
+            # models must be sorted by ascending order!
+            net_parameter_pathname = [
+                "models/denoiser2.params",
+                "models/handwriting_line8.params",
                 "models/paragraph_segmentation2.params",
                 "models/word_segmentation2.params",
-                "models/denoiser2.params",
-                "models/handwriting_line8.params"
             ]
-        return net_parameters
+        if net_parameter_pathname == "download".lower():
+            download_models()
+        return net_parameter_pathname
 
     def __call__(self, *args, **kwargs):
         return self.one_step(*args, **kwargs)
@@ -670,227 +660,15 @@ class recognize:
         print(self.generator.generate_sequences(inputs, states, sentence))
 
 
-## TEST
-# Write test into this class
-class recognize_test():
-    """
-    Handwritten recognition test with one particular image in numpy type
-    """
-
-    def __init__(self, image_name="tests/TurkishHandwritten/elyaz2.jpeg", filter_number=1, form_size=(1120, 800),
-                 device=None, num_device=1,
-                 show=True):
-        """
-        Handwritten recognition test initializer
-        :param image_name: Image name with full path
-            DEFAULT="elyaz2.jpeg"
-        :param filter_number: There is 4 different filters 0-3
-            DEFAULT=1
-        :param form_size: poossible form size
-            DEFAULT=(1120, 800)
-        :param device:
-        If it is None:
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        If it is 'auto':
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        if it is 'cpu': uses one, num_device-1 indexed cpu
-        if it is 'gpu': uses one, num_device-1 indexed gpu
-            DEFAULT=None
-        :param num_device: number of device that module running on.
-            DEFAULT=1
-        :param show: Show plot if show=True. default; show=False
-            DEFAULT=True
-        """
-        self.form_size = form_size
-        self.device = select_device(device, num_device)
-        self.show = show
-        # original image
-        self.image = mx.image.imread(image_name)  # 0 is grayscale
-        self.image = self.image.asnumpy()
-        print(self.image.shape)
-
-        self.image = self.resize()
-        self.image = self.image[..., 0]
-
-        self.images, self.titles = self.preprocess()
-        # [img, th1, th2, th3] = images
-        self.image = self.images[filter_number]
-        print("filter number: ", filter_number, "filtered shape:", self.image.shape)
-
-        # self.image = self.image[..., 0]
-        self.htr = recognize(self.image, form_size=form_size, device=self.device, show=self.show)
-
-    def __call__(self, *args, **kwargs):
-        self.htr(*args, **kwargs)
-
-    def histogram(self, show=False):
-        """
-        Gives histogram, normalized cdf and bins values in numpy type
-        :param show: Show plot if show=True. default; show=False
-            DEFAULT=False
-        :return: histogram, normalized cdf and bins
-        """
-        return histogram(self.image, show=show or self.show)
-
-    def resize(self, show=False):
-        """
-        Resizes numpy array into form size
-        :param show: Show plot if show=True. default; show=False
-            DEFAULT=False
-        :return: Resized image in numpy format.
-        """
-        # TODO: MXNET gpu -> cpu
-        # image = self.image.asnumpy()
-        image = self.image
-        image_resize = cv2.resize(image, dsize=self.form_size, interpolation=cv2.INTER_CUBIC)
-        if show or self.show:
-            fig, ax = plt.subplots(2, 1, figsize=(15, 18))
-            print("test_image: ", image.shape)
-            plt.subplot(121), plt.imshow(image, cmap="gray")
-            plt.title("original image")
-            plt.axis("off")
-
-            # downsampled image
-            print("test_HTR_downsampled: ", image_resize.shape)
-            plt.subplot(122), plt.imshow(image_resize, cmap="gray")
-            plt.title("downsampled image")
-            plt.axis("off")
-
-            # save downsampled test_image and review
-            plt.imsave("HTR_downsampled.jpeg", image_resize, cmap="gray")
-        return image_resize
-
-    def preprocess(self, bottom=127, top=255, show=False):
-        """
-        Input image preprocess with some tricks.
-        :param bottom: lower limit of filter.
-            DEFAULT=127
-        :param top: upper limit of filter.
-            DEFAULT=255
-        :param show: Show plot if show=True. default; show=False
-            DEFAULT=False
-        :return: filtered images and titles
-        """
-        at = all_togather(self.image, bottom, top)
-        (th, laplacian, sobelx, sobely) = at
-        [img, th1, th2, th3] = th
-        titles = ['Original Image', 'Global Thresholding (v = 127)',
-                  'Adaptive Mean Thresholding', 'Adaptive Gaussian Thresholding']
-        images = [img, th1, th2, th3]
-
-        if show or self.show:
-            fig, ax = plt.subplots(1, figsize=(15, 9))
-            for i in range(4):
-                plt.subplot(2, 2, i + 1), plt.imshow(images[i], 'gray')
-                plt.title(titles[i])
-                plt.xticks([]), plt.yticks([])
-            plt.show()
-            fig.savefig("elyaz_thresholds.png")
-        return images, titles
-
-
-class recognize_IAM_random_test():
-    """
-    Handwritten recognition test select randomly from IAM dataset
-    """
-
-    def __init__(self, device=None, num_device=1):
-        """
-        Handwritten recognition random image test initializer
-        :param device:
-        If it is None:
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        If it is 'auto':
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        if it is 'cpu': uses one, num_device-1 indexed cpu
-        if it is 'gpu': uses one, num_device-1 indexed gpu
-            DEFAULT=None
-        :param num_device: number of device that module running on.
-            DEFAULT=1
-        """
-        self.device = select_device(device=device, num_device=num_device)
-        test_ds = IAMDataset("form_original", train=False)
-
-        n = random.random()  # random selection
-        n = int(n * len(test_ds))
-        self.image, self.text = test_ds[n]
-        self.recog = recognize(self.image, device=device)
-
-    def __call__(self, *args, **kwargs):
-        return self.test()
-
-    def test(self):
-        result = self.recog()
-        return result
-
-
-class recognize_IAM_test():
-    """
-    Handwritten recognition test select from subset of IAM dataset. images at tests/IAM8 folder
-    """
-
-    def __init__(self, num_image=4, device=None, num_device=1):
-        """
-        Test recognize class with subset of IAM dataset. Images and predicted results are in the 'tests/IAM8' folder.
-        :param num_image: image number. 1-8
-        :param device:
-        If it is None:
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        If it is 'auto':
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        if it is 'cpu': uses one, num_device-1 indexed cpu
-        if it is 'gpu': uses one, num_device-1 indexed gpu
-        :param num_device: number of device that module running on.
-        """
-        assert not(num_image < 1 or num_image > 8), "Please enter number between 1-8"
-        self.device = select_device(device=device, num_device=num_device)
-        test_ds_path_images = "tests/IAM8/"
-        test_ds_images = [f for f in listdir(test_ds_path_images) if isfile(join(test_ds_path_images, f))]
-        self.image_name = test_ds_images[num_image]
-        self.image_path = test_ds_path_images + self.image_name
-
-        test_ds_path_results = "tests/IAM8/results"
-        test_ds_results = [f for f in listdir(test_ds_path_results) if isfile(join(test_ds_path_results, f))]
-        self.text_name = test_ds_results[num_image]
-        self.text_path = test_ds_path_results + self.text_name
-
-        image = mx.image.imread(self.image_path)
-        self.image = image.asnumpy()
-        self.recog = recognize(self.image, device=device)
-
-    def __call__(self, *args, **kwargs):
-        return self.test()
-
-    def test(self):
-        result = self.recog()
-        return result
-
-
 if __name__ == "__main__":
-    device = "cpu"
-
-    # %% recognize_test class
-    # htr_test = recognize_test(show=True, device=device)
-    # result = htr_test()
+    num_device = 1
+    device_queue = "cpu"
+    device = device_selecttion_helper(device=device_queue, num_device=num_device)
 
     # %% recognize class
-    # image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")
-    # image = image.asnumpy()
-    # recog = recognize(image, device=device)
-    # result = recog()
-
-    # %% recognize_IAM_random_test class
-    # IAM_recog = recognize_IAM_random_test(device)
-    # result = IAM_recog()
-
-    # %% recognize_IAM_test class
-    IAM_recog = recognize_IAM_test(4, device)
-    result = IAM_recog()
+    image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")
+    image = image.asnumpy()
+    recog = recognize(image, device=device)
+    result = recog()
 
     pprint(result)

@@ -1,12 +1,8 @@
 import os
-from os import path
 import zipfile
+from os import path
 
 import mxnet as mx
-
-import threading
-import asyncio
-from multiprocessing.pool import ThreadPool
 
 all_messages = [
     "Downloading Paragraph Segmentation parameters",

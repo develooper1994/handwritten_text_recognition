@@ -1,9 +1,8 @@
 # TODO! Not Completed!
 import os
 import random
-from os import listdir, walk
+from os import listdir
 from os.path import isfile, join
-import glob
 from pprint import pprint
 
 import cv2
@@ -12,42 +11,35 @@ import mxnet as mx
 
 from recognition.ocr.utils.iam_dataset import IAMDataset
 from recognition.ocr.utils.preprocess import histogram, all_togather
-from recognition.recognizer import select_device, recognize
+from recognition.recognizer import device_selecttion_helper, recognize
 
 
+## TEST
+# Write test into this class
 class recognize_test():
     """
     Handwritten recognition test with one particular image in numpy type
     """
 
-    def __init__(self, image_name="TurkishHandwritten/elyaz2.jpeg", filter_number=1, form_size=(1120, 800),
-                 device=None, num_device=1,
+    def __init__(self, image_name="TurkishHandwritten/elyaz2.jpeg", net_parameter_pathname=None, filter_number=1, form_size=(1120, 800), device=None,
                  show=True):
         """
         Handwritten recognition test initializer
         :param image_name: Image name with full path
             DEFAULT="elyaz2.jpeg"
+        :param net_parameter_pathname: network(model) parameter paths with name
         :param filter_number: There is 4 different filters 0-3
             DEFAULT=1
         :param form_size: poossible form size
             DEFAULT=(1120, 800)
-        :param device:
-        If it is None:
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        If it is 'auto':
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        if it is 'cpu': uses one, num_device-1 indexed cpu
-        if it is 'gpu': uses one, num_device-1 indexed gpu
+        :param device: determines the device that the model(or network) will work on
             DEFAULT=None
-        :param num_device: number of device that module running on.
-            DEFAULT=1
+        If it is None:
+            device = mx.cpu()
         :param show: Show plot if show=True. default; show=False
             DEFAULT=True
         """
         self.form_size = form_size
-        self.device = select_device(device, num_device)
         self.show = show
         # original image
         self.image = mx.image.imread(image_name)  # 0 is grayscale
@@ -63,7 +55,7 @@ class recognize_test():
         print("filter number: ", filter_number, "filtered shape:", self.image.shape)
 
         # self.image = self.image[..., 0]
-        self.htr = recognize(self.image, form_size=form_size, device=self.device, show=self.show)
+        self.htr = recognize(self.image, net_parameter_pathname=net_parameter_pathname, form_size=form_size, device=device, show=self.show)
 
     def __call__(self, *args, **kwargs):
         self.htr(*args, **kwargs)
@@ -139,29 +131,21 @@ class recognize_IAM_random_test():
     Handwritten recognition test select randomly from IAM dataset
     """
 
-    def __init__(self, device=None, num_device=1):
+    def __init__(self, net_parameter_pathname, device=None):
         """
         Handwritten recognition random image test initializer
-        :param device:
-        If it is None:
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        If it is 'auto':
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        if it is 'cpu': uses one, num_device-1 indexed cpu
-        if it is 'gpu': uses one, num_device-1 indexed gpu
+        :param net_parameter_pathname: network(model) parameter paths with name
+        :param device: determines the device that the model(or network) will work on
             DEFAULT=None
-        :param num_device: number of device that module running on.
-            DEFAULT=1
+        If it is None:
+            device = mx.cpu()
         """
-        self.device = select_device(device=device, num_device=num_device)
         test_ds = IAMDataset("form_original", train=False)
 
         n = random.random()  # random selection
         n = int(n * len(test_ds))
         self.image, self.text = test_ds[n]
-        self.recog = recognize(self.image, device=device)
+        self.recog = recognize(self.image, net_parameter_pathname=net_parameter_pathname, device=device)
 
     def __call__(self, *args, **kwargs):
         return self.test()
@@ -176,23 +160,17 @@ class recognize_IAM_test():
     Handwritten recognition test select from subset of IAM dataset. images at IAM8 folder
     """
 
-    def __init__(self, net_parameter_names, num_image=4, device=None, num_device=1):
+    def __init__(self, net_parameter_pathname, num_image=4, device=None):
         """
         Test recognize class with subset of IAM dataset. Images and predicted results are in the 'IAM8' folder.
+        :param net_parameter_pathname: network(model) parameter paths with name
         :param num_image: image number. 1-8
-        :param device:
+        :param device: determines the device that the model(or network) will work on
+            DEFAULT=None
         If it is None:
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        If it is 'auto':
-            If num_device==1: uses gpu if there is any gpu
-            else: uses num_device gpu if there is any gpu
-        if it is 'cpu': uses one, num_device-1 indexed cpu
-        if it is 'gpu': uses one, num_device-1 indexed gpu
-        :param num_device: number of device that module running on.
+            device = mx.cpu()
         """
         assert not (num_image < 1 or num_image > 8), "Please enter number between 1-8"
-        self.device = select_device(device=device, num_device=num_device)
         test_ds_path_images = "IAM8/"
         test_ds_images = [f for f in listdir(test_ds_path_images) if isfile(join(test_ds_path_images, f))]
         self.image_name = test_ds_images[num_image]
@@ -206,12 +184,7 @@ class recognize_IAM_test():
         image = mx.image.imread(self.image_path)
         self.image = image.asnumpy()
 
-        self.recog = recognize(self.image, net_parameters=net_parameter_names, device=device)
-
-        f = []
-        for (dirpath, dirnames, filenames) in walk(net_parameter_path):
-            f.extend(filenames)
-            break
+        self.recog = recognize(self.image, net_parameter_pathname=net_parameter_pathname, device=device)
 
     def __call__(self, *args, **kwargs):
         return self.test()
@@ -222,29 +195,32 @@ class recognize_IAM_test():
 
 
 if __name__ == "__main__":
-    net_parameter_path = "../models"
+    # TODO! models path string isn't looks good.
+    net_parameter_path = r"../models"
     net_module_paths = [f for f in listdir(net_parameter_path) if isfile(join(net_parameter_path, f))]
     net_parameter_names = [param for param in net_module_paths if os.path.splitext(param)[1] == ".params"]
     net_parameter_paths = [os.path.join(net_parameter_path, path) for path in net_parameter_names]
 
-    device = "cpu"
+    num_device = 1
+    device_queue = "cpu"
+    device = device_selecttion_helper(device=device_queue, num_device=num_device)
 
     # %% recognize_test class
-    # htr_test = recognize_test(show=True, device=device)
-    # result = htr_test()
+    htr_test = recognize_test(show=True, net_parameter_pathname=net_parameter_paths, device=device)
+    result = htr_test()
 
     # %% recognize class
-    # image = mx.image.imread("TurkishHandwritten/elyaz2.jpeg")
-    # image = image.asnumpy()
-    # recog = recognize(image, device=device)
-    # result = recog()
+    image = mx.image.imread("TurkishHandwritten/elyaz2.jpeg")
+    image = image.asnumpy()
+    recog = recognize(image, net_parameter_paths, device=device)
+    result = recog()
 
     # %% recognize_IAM_random_test class
-    # IAM_recog = recognize_IAM_random_test(device)
-    # result = IAM_recog()
+    IAM_recog = recognize_IAM_random_test(net_parameter_pathname=net_parameter_paths, device=device)
+    result = IAM_recog()
 
     # %% recognize_IAM_test class
-    IAM_recog = recognize_IAM_test(net_parameter_paths, 4, device)
+    IAM_recog = recognize_IAM_test(net_parameter_pathname=net_parameter_paths, num_image=4, device=device)
     result = IAM_recog()
 
     pprint(result)
