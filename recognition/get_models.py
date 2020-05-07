@@ -1,4 +1,5 @@
 # TODO! Log instead of print
+import asyncio
 import os
 import zipfile
 from os import path
@@ -87,6 +88,101 @@ class get_models():
         print("Finished")
         return True
 
+class async_get_models():
+    """
+    Download network-parameters from link
+    """
+    def __init__(self, all_messages, all_links, model_dir='models', dirname=None):
+        """
+        Network-parameters and some dataset pieces downloader initializer
+        :param all_messages: messages that will printed out(only first 4 now)
+        :param all_links: Download links
+        :param model_dir: models download path
+            DEFAULT='models'
+        :param dirname: some dataset pieces. Fonts, typo
+            DEFAULT=None
+        """
+        self.all_messages = all_messages
+        self.all_links = all_links
+        if dirname is None:
+            self.dirname = 'dataset'
+        self.model_dir = model_dir
+        if not path.isdir(model_dir):
+            os.makedirs(model_dir)
+
+    def __call__(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.download_models())
+
+    async def __download(self, link):
+        """
+        Download link
+        :param link: Download link
+        :return:
+        """
+        # without await 40.56130576133728 second
+        await asyncio.sleep(0.01)  # event loop runs function for a while suspends
+        mx.test_utils.download(link, dirname=self.model_dir)
+
+    async def __download_parameters(self, messages, link):
+        """
+        Network-parameter downloader initializer
+        :param messages: messages that will printed out
+        :param link: Download link
+        :return:
+        """
+        print(messages)
+        await self.__download(link)
+
+    async def download_models(self):
+        """
+        Handles all downloading extracting process
+        :return: Process finishes signature in bool. If process successful, returns True
+        """
+        model_dir = self.model_dir
+        # %% Network-Parameters -> 0,1,2,3
+
+        await asyncio.wait(
+            [self.__download_parameters(self.all_messages[idx], self.all_links[idx]) for idx in range(4)]
+        )
+        print("Parameters finished")
+
+        # %% Cost matrices -> 4,5,6,7
+        print("Downloading cost matrices")
+        # for idx in range(4, 8):
+        #     await self.__download(self.all_links[idx])
+        await asyncio.wait(
+            [self.__download(self.all_links[idx]) for idx in range(4, 8)]
+        )
+        print("Cost matrices finished")
+
+        # %% Fonts -> 8
+        print("Downloading fonts")
+        dataset_dir = path.join('dataset', 'fonts')
+        self.model_dir = dataset_dir
+        if not path.isdir(dataset_dir):
+            os.makedirs(dataset_dir)
+        await self.__download(self.all_links[8])
+        with zipfile.ZipFile(path.join(dataset_dir, "fonts.zip"), "r") as zip_ref:
+            zip_ref.extractall(dataset_dir)
+        print("Fonts finished")
+
+        # %% Text datasets -> 9,10,11,12
+        print("Downloading text datasets")
+        dataset_dir = path.join('dataset', 'typo')
+        if not path.isdir(dataset_dir):
+            os.makedirs(dataset_dir)
+
+        # for idx in range(9, 13):
+        #     await self.__download(self.all_links[idx])
+        await asyncio.wait(
+            [self.__download(self.all_links[idx]) for idx in range(9, 13)]
+        )
+
+        self.model_dir = model_dir
+        print("Texts finished")
+        print("Finished")
+        return True
 
 if __name__ == "__main__":
     import time

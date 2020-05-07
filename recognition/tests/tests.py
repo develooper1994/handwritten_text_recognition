@@ -11,7 +11,8 @@ import mxnet as mx
 
 from recognition.ocr.utils.iam_dataset import IAMDataset
 from recognition.ocr.utils.preprocess import histogram, all_togather
-from recognition.recognizer import device_selecttion_helper, recognize
+from recognition.recognizer import recognize
+from recognition.utils.recognizer_utils import device_selecttion_helper
 
 
 ## TEST

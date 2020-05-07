@@ -25,12 +25,10 @@ import numpy as np
 from skimage import exposure
 from tqdm import tqdm
 
-from recognition.get_models import get_models
+from recognition.get_models import async_get_models as get_models
 from recognition.ocr.handwriting_line_recognition import Network as HandwritingRecognitionNet, \
     handwriting_recognition_transform
-from recognition.ocr.handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
 from recognition.ocr.paragraph_segmentation_dcnn import SegmentationNetwork, paragraph_segmentation_transform
-from recognition.ocr.utils.beam_search import ctcBeamSearch
 from recognition.ocr.utils.denoiser_utils import SequenceGenerator
 from recognition.ocr.utils.encoder_decoder import Denoiser, ALPHABET, encode_char, EOS, BOS
 from recognition.ocr.utils.expand_bounding_box import expand_bounding_box
@@ -38,6 +36,8 @@ from recognition.ocr.utils.iam_dataset import IAMDataset, crop_handwriting_page
 from recognition.ocr.utils.sclite_helper import ScliteHelper
 from recognition.ocr.utils.word_to_line import sort_bbs_line_by_line, crop_line_images
 from recognition.ocr.word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
+from recognition.utils.recognizer_utils import device_selecttion_helper, get_arg_max, get_beam_search, \
+    get_IAMDataset_test
 
 random.seed(1)
 
@@ -49,82 +49,6 @@ random.seed(1)
 # 2) words ->
 # 3) word to line(to protect the information context) ->
 # 4) word image to string line by line
-
-## Character Probalities to Text
-def get_arg_max(prob):
-    """
-    The greedy algorithm convert the output of the handwriting recognition network into strings.
-    :param prob: probability values
-    :return: maximum probabilities
-    """
-    arg_max = mx.nd.array(prob).topk(axis=2).asnumpy()
-    return decoder_handwriting(arg_max)[0]
-
-
-def get_beam_search(prob, width=5):
-    """
-    Helps to get beam search probabilities
-    :param prob: Probabilities
-    :param width: Beam witdh
-    :return: beam search probabilities
-    """
-    possibilities = ctcBeamSearch(prob.softmax()[0].asnumpy(), alphabet_encoding, None, width)
-    return possibilities[0]
-
-
-## recognizer Class to handle all mess
-def get_IAMDataset_test(credentials):
-    """
-    Helps to get IAM dataset
-    :param credentials: Account information to access IAM dataset.
-    If you don't have you can have from http://www.fki.inf.unibe.ch/DBs/iamDB/iLogin/index.php
-    Register and write your account information to credentials.json
-    :return: iam dataset iterator
-    """
-    test_ds = IAMDataset("form_original", credentials=credentials, train=False)
-    return test_ds
-
-
-def device_selecttion_helper(device=None, num_device=1):
-    """
-    Helps to select possible devices.
-    :param device:
-    If it is None:
-        If num_device==1: uses gpu if there is any gpu
-        else: uses num_device gpu if there is any gpu
-    If it is 'auto':
-        If num_device==1: uses gpu if there is any gpu
-        else: uses num_device gpu if there is any gpu
-    if it is 'cpu': uses one, num_device-1 indexed cpu
-    if it is 'gpu': uses one, num_device-1 indexed gpu
-    :param num_device: number of device that module running on.
-    :return: possible devices
-    """
-    num_device = abs(num_device)
-    assert num_device != 0, "Please enter bigger than 1"
-    if device is None:
-        if num_device == 1:
-            device_object = mx.gpu(0)
-        else:
-            device_object = [mx.gpu(i) for i in range(num_device)]
-    elif device == 'auto':
-        if num_device == 1:
-            device_object = mx.gpu(num_device - 1) if mx.context.num_gpus() > 0 else mx.cpu(num_device - 1)
-        else:
-            device_object = [mx.gpu() if mx.context.num_gpus() > 0 else mx.cpu() for i in range(num_device)]
-            # device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
-            #                                                                                    range(num_device)]
-    elif device == 'cpu':
-        device_object = mx.cpu(num_device - 1)
-    elif device == 'gpu':
-        device_object = mx.gpu(num_device - 1)
-    else:
-        # If it isn't a string.
-        print("Assuming device is a mxnet ctx or device object or queue. Exp: mx.gpu(0)")
-        device_object = device
-
-    return device_object
-
 
 #         :param min_c: minimum probability of detected image
 #         :param overlap_thres: overlapping constant
@@ -161,10 +85,10 @@ class recognize:
         :param is_test: If it is True than activate SCTK tool to get quantative results.
             DEFAULT=False
         """
-        #%% Default-Parameters
+        # %% Default-Parameters
         self.__set_default_parameters(ScliteHelperPATH, crop, device, form_size, image, is_test, show)
 
-        #%% Network-Parameters
+        # %% Network-Parameters
         self.__set_default_networks(net_parameter_pathname)
 
     def __set_default_parameters(self, ScliteHelperPATH, crop, device, form_size, image, is_test, show):
@@ -208,23 +132,23 @@ class recognize:
         loop.run_until_complete(self.__load_all_networks(net_parameter_pathname))
 
         ## We use a language model in order to rank the propositions from the denoiser
-        self.language_model, self.vocab = nlp.model.big_rnn_lm_2048_512(dataset_name='gbw', pretrained=True,
-                                                                        ctx=self.device)
-        self.moses_tokenizer = nlp.data.SacreMosesTokenizer()
-        self.moses_detokenizer = nlp.data.SacreMosesDetokenizer()
+        language_model, vocab = nlp.model.big_rnn_lm_2048_512(dataset_name='gbw', pretrained=True,
+                                                              ctx=self.device)
+        moses_tokenizer = nlp.data.SacreMosesTokenizer()
+        moses_detokenizer = nlp.data.SacreMosesDetokenizer()
 
         # !!! Slowest loading!
         # We use beam search to sample the output of the denoiser
         print("Beam sampler created")
-        self.beam_sampler = nlp.model.BeamSearchSampler(beam_size=20,
-                                                        decoder=self.denoiser.decode_logprob,
-                                                        eos_id=EOS,
-                                                        scorer=nlp.model.BeamSearchScorer(),
-                                                        max_length=150)
+        beam_sampler = nlp.model.BeamSearchSampler(beam_size=20,
+                                                   decoder=self.denoiser.decode_logprob,
+                                                   eos_id=EOS,
+                                                   scorer=nlp.model.BeamSearchScorer(),
+                                                   max_length=150)
         print("Sequence generator created")
-        self.generator = SequenceGenerator(self.beam_sampler, self.language_model, self.vocab, self.device,
-                                           self.moses_tokenizer,
-                                           self.moses_detokenizer)
+        self.generator = SequenceGenerator(beam_sampler, language_model, vocab, self.device,
+                                           moses_tokenizer,
+                                           moses_detokenizer)
 
     async def __load_all_networks(self, net_parameter_pathname):
         net_parameter_pathname = self.load_parameter_paths(net_parameter_pathname)
@@ -377,7 +301,7 @@ class recognize:
         }
         return results
 
-    #%% network functions
+    # %% network functions
     ## Paragraph segmentation
     # Given the image of a form in the IAM dataset, predict a bounding box of the handwriten component. The model was trained on using https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/master/paragraph_segmentation_dcnn.py and an example is presented in https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/master/paragraph_segmentation_dcnn.ipynb
     def predict_bbs(self, expand_bb_scale_x=0.18, expand_bb_scale_y=0.23):
@@ -742,7 +666,6 @@ if __name__ == "__main__":
     # async -> 12.5510573387146 second
     # sync -> 12.63401460647583
     # print("Ellepsed time:", time.time()-t0)
-
 
     result = recog()
 
