@@ -24,7 +24,7 @@ import numpy as np
 from skimage import exposure
 from tqdm import tqdm
 
-from recognition.get_models import download_models
+from recognition.get_models import get_models
 from recognition.ocr.handwriting_line_recognition import Network as HandwritingRecognitionNet, \
     handwriting_recognition_transform
 from recognition.ocr.handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
@@ -265,7 +265,42 @@ class recognize:
                 "models/word_segmentation2.params",
             ]
         if net_parameter_pathname == "download".lower():
-            download_models()
+            all_messages = [
+                # Parameters
+                "Downloading Paragraph Segmentation parameters",
+                "Downloading Word Segmentation parameters",
+                "Downloading Handwriting Line Recognition parameters",
+                "Downloading Denoiser parameters",
+                # Cost matrices
+                "Downloading cost matrices",
+                # Fonts
+                "Downloading fonts",
+                # Text datasets
+                "Downloading text datasets"
+            ]
+
+            all_links = [
+                # Parameters
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/paragraph_segmentation2.params',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/word_segmentation2.params',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/handwriting_line8.params',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/denoiser2.params',
+                # Cost matrices
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/deletion_costs.txt',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/substitute_costs.txt',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/insertion_costs.txt',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/substitute_probs.json',
+                # Fonts
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/fonts.zip',
+                # Text datasets
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/alicewonder.txt',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/all.txt',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/text_train.txt',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/validating.json',
+                'https://s3.us-east-2.amazonaws.com/gluon-ocr/models/typo-corpus-r1.txt'
+            ]
+            models = get_models(all_messages, all_links)
+            models()
         return net_parameter_pathname
 
     def __call__(self, *args, **kwargs):
