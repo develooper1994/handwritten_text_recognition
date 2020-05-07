@@ -1,4 +1,5 @@
 # TODO! ask credentials before root
+# TODO! try to load faster. async, multithread, multiprocess, ...
 
 import glob
 import json
