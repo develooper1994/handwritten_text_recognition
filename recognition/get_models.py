@@ -1,3 +1,5 @@
+# TODO! Make it multithread or async to speed downlaod
+# TODO! Log instead of print
 import os
 import zipfile
 from os import path
@@ -6,7 +8,19 @@ import mxnet as mx
 
 
 class get_models():
+    """
+    Download network-parameters from link
+    """
     def __init__(self, all_messages, all_links, model_dir='models', dirname=None):
+        """
+        Network-parameters and some dataset pieces downloader initializer
+        :param all_messages: messages that will printed out(only first 4 now)
+        :param all_links: Download links
+        :param model_dir: models download path
+            DEFAULT='models'
+        :param dirname: some dataset pieces. Fonts, typo
+            DEFAULT=None
+        """
         self.all_messages = all_messages
         self.all_links = all_links
         if dirname is None:
@@ -19,13 +33,28 @@ class get_models():
         self.download_models()
 
     def __download(self, link):
+        """
+        Download link
+        :param link: Download link
+        :return:
+        """
         mx.test_utils.download(link, dirname=self.model_dir)
 
     def __download_parameters(self, messages, link):
+        """
+        Network-parameter downloader initializer
+        :param messages: messages that will printed out
+        :param link: Download link
+        :return:
+        """
         print(messages)
         self.__download(link)
 
     def download_models(self):
+        """
+        Handles all downloading extracting process
+        :return: Process finishes signature in bool. If process successful, returns True
+        """
         model_dir = self.model_dir
         # %% Network-Parameters -> 0,1,2,3
         for idx in range(4):
@@ -57,7 +86,7 @@ class get_models():
 
         self.model_dir = model_dir
         print("Finished")
-
+        return True
 
 if __name__ == "__main__":
     all_messages = [
