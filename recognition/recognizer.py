@@ -145,12 +145,12 @@ class recognize:
         result = recog()
     """
 
-    def __init__(self, image, net_parameter_paths=None, form_size=(1120, 800), device=None, num_device=1, crop=False,
+    def __init__(self, image, net_parameters=None, form_size=(1120, 800), device=None, num_device=1, crop=False,
                  ScliteHelperPATH=None, show=False, is_test=False):
         """
         Handwritten Text Recognization in one step
         :param image: input image in numpy.array object that includes handwritten text
-        :param net_parameter_paths: Network parameter paths
+        :param net_parameters: Network parameter paths
         :param form_size: possible form size
             DEFAULT=(1120, 800)
         :param device:
@@ -208,9 +208,9 @@ class recognize:
         # self.image = self.image[np.newaxis, :]  # add batch dim
         # # print(image.shape)
 
-        # net_parameter_paths
-        net_parameter_paths = self.load_parameter_paths(net_parameter_paths)
-        self.net_parameter_paths = net_parameter_paths
+        #%% net_parameters
+        net_parameters = self.load_parameter_paths(net_parameters)
+        self.net_parameter_paths = net_parameters
         self.paragraph_segmentation_net_parameter_path = self.net_parameter_paths[0]
         self.word_segmentation_net_parameter_path = self.net_parameter_paths[1]
         self.denoiser_net_parameter_path = self.net_parameter_paths[2]
@@ -228,7 +228,7 @@ class recognize:
         self.word_segmentation_net.load_parameters(self.word_segmentation_net_parameter_path)
         self.word_segmentation_net.hybridize()
 
-        ## Denoising the text output
+        #%% Denoising the text output
         # We use a seq2seq denoiser to translate noisy input to better output
         print("Denoiser model loading")
         self.FEATURE_LEN = 150
@@ -265,18 +265,18 @@ class recognize:
                                            self.moses_tokenizer,
                                            self.moses_detokenizer)
 
-    def load_parameter_paths(self, net_parameter_paths=None):
-        assert not isinstance(net_parameter_paths, list) or isinstance(net_parameter_paths, tuple), \
-            "Please enter net_parameter_paths in List or tuple type"
+    def load_parameter_paths(self, net_parameters=None):
+        assert not isinstance(net_parameters, list) or isinstance(net_parameters, tuple), \
+            "Please enter net_parameters in List or tuple type"
 
-        if net_parameter_paths is None:
-            net_parameter_paths = [
+        if net_parameters is None:
+            net_parameters = [
                 "models/paragraph_segmentation2.params",
                 "models/word_segmentation2.params",
                 "models/denoiser2.params",
                 "models/handwriting_line8.params"
             ]
-        return net_parameter_paths
+        return net_parameters
 
     def __call__(self, *args, **kwargs):
         return self.one_step(*args, **kwargs)
