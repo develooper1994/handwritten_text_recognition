@@ -1,5 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-# SPDX-License-Identifier: Apache-2.0
+# TODO! ask credentials before root
 
 import glob
 import json
@@ -19,7 +18,11 @@ from mxnet.gluon.data import dataset
 
 
 def crop_image(image, bb):
-    """ Helper function to crop the image by the bounding box (in percentages)
+    """
+    Helper function to crop the image by the bounding box (in percentages)
+    :param image: input image
+    :param bb: bounding box
+    :return: cropped image of size image_size.
     """
     (x, y, w, h) = bb
     x = x * image.shape[1]
@@ -32,25 +35,23 @@ def crop_image(image, bb):
 
 
 def resize_image(image, desired_size):
-    ''' Helper function to resize an image while keeping the aspect ratio.
+    """ Helper function to resize an image while keeping the aspect ratio.
     Parameter
     ---------
+    :param image: The image to be resized.
+    :type image: np.array
 
-    image: np.array
-        The image to be resized.
-
-    desired_size: (int, int)
-        The (height, width) of the resized image
+    :param desired_size: The (height, width) of the resized image
+    :type desired_size: (int, int)
 
     Return
     ------
+    :param image:The image of size = desired_size
+    :type image: np.array
 
-    image: np.array
-        The image of size = desired_size
-
-    bounding box: (int, int, int, int)
-        (x, y, w, h) in percentages of the resized image of the original
-    '''
+    :return: (x, y, w, h) in percentages of the resized image of the original
+    :type return: bounding box: (int, int, int, int)
+    """
     size = image.shape[:2]
     if size[0] > desired_size[0] or size[1] > desired_size[1]:
         ratio_w = float(desired_size[0]) / size[0]
@@ -76,26 +77,25 @@ def resize_image(image, desired_size):
 
 
 def crop_handwriting_page(image, bb, image_size):
-    '''
+    """
     Given an image and bounding box (bb) crop the input image based on the bounding box.
     The final output image was scaled based on the image size.
 
     Parameters
     ----------
-    image: np.array
-        Input form image
+    :param image: Input form image
+    :type image: np.array
 
-    bb: (x, y, w, h)
-        The bounding box in percentages to crop
+    :param bb: The bounding box in percentages to crop
+    :type bb: (x, y, w, h)
 
-    image_size: (h, w)
-        Image size to scale the output image to.
+    :param image_size: Image size to scale the output image to.
+    :type image_size: (h, w)
 
     Returns
     -------
-    output_image: np.array
-        cropped image of size image_size.
-    '''
+    :return: cropped image of size image_size.
+    """
     image = crop_image(image, bb)
 
     image, _ = resize_image(image, desired_size=image_size)
@@ -215,8 +215,13 @@ class IAMDataset(dataset.ArrayDataset):
 
     @staticmethod
     def _reporthook(count, block_size, total_size):
-        ''' Prints a process bar that is compatible with urllib.request.urlretrieve
-        '''
+        """
+        Prints a process bar that is compatible with urllib.request.urlretrieve
+        :param count:
+        :param block_size:
+        :param total_size:
+        :return:
+        """
         toolbar_width = 40
         percentage = float(count * block_size) / total_size * 100
         # Taken from https://gist.github.com/sibosutd/c1d9ef01d38630750a1d1fe05c367eb8
@@ -227,16 +232,17 @@ class IAMDataset(dataset.ArrayDataset):
         sys.stdout.flush()
 
     def _extract(self, archive_file, archive_type, output_dir):
-        ''' Helper function to extract archived files. Available for tar.tgz and zip files
+        """
+        Helper function to extract archived files. Available for tar.tgz and zip files
         Parameter
         ---------
-        archive_file: str
-            Filepath to the archive file
-        archive_type: str, options: [tar, zip]
-            Select the type of file you want to extract
-        output_dir: str
-            Location where you want to extract the files to
-        '''
+        :param archive_file: Filepath to the archive file
+        :type archive_file: str
+        :param archive_type: Select the type of file you want to extract
+        :type archive_type: str, options: [tar, zip]
+        :param output_dir: Location where you want to extract the files to
+        :type output_dir: str
+        """
         logging.info("Extracting {}".format(archive_file))
         _available_types = ["tar", "zip"]
         error_message = "Archive_type {} is not an available option ({})".format(archive_type, _available_types)
@@ -251,12 +257,13 @@ class IAMDataset(dataset.ArrayDataset):
             zip_ref.close()
 
     def _download(self, url):
-        ''' Helper function to download using the credentials provided
+        """
+        Helper function to download using the credentials provided
         Parameter
         ---------
-        url: str
-            The url of the file you want to download.
-        '''
+        :param url: The url of the file you want to download.
+        :type url: str
+        """
         password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         password_mgr.add_password(None, url, self._credentials[0], self._credentials[1])
         handler = urllib.request.HTTPBasicAuthHandler(password_mgr)
@@ -270,8 +277,10 @@ class IAMDataset(dataset.ArrayDataset):
         sys.stdout.write("\n")
 
     def _download_xml(self):
-        ''' Helper function to download and extract the xml of the IAM database
-        '''
+        """
+        Helper function to download and extract the xml of the IAM database
+        :return:
+        """
         archive_file = os.path.join(self._root, os.path.basename(self._xml_url))
         logging.info("Downloding xml from {}".format(self._xml_url))
         if not os.path.isfile(archive_file):
@@ -279,8 +288,10 @@ class IAMDataset(dataset.ArrayDataset):
             self._extract(archive_file, archive_type="tar", output_dir="xml")
 
     def _download_data(self):
-        ''' Helper function to download and extract the data of the IAM database
-        '''
+        """
+        Helper function to download and extract the data of the IAM database
+        :return:
+        """
         for url in self._data_urls:
             logging.info("Downloding data from {}".format(url))
             archive_file = os.path.join(self._root, os.path.basename(url))
@@ -289,8 +300,10 @@ class IAMDataset(dataset.ArrayDataset):
                 self._extract(archive_file, archive_type="tar", output_dir=self._parse_method.split("_")[0])
 
     def _download_subject_list(self):
-        ''' Helper function to download and extract the subject list of the IAM database
-        '''
+        """
+        Helper function to download and extract the subject list of the IAM database
+        :return:
+        """
         url = "http://www.fki.inf.unibe.ch/DBs/iamDB/tasks/largeWriterIndependentTextLineRecognitionTask.zip"
         archive_file = os.path.join(self._root, os.path.basename(url))
         if not os.path.isfile(archive_file):
@@ -299,6 +312,11 @@ class IAMDataset(dataset.ArrayDataset):
             self._extract(archive_file, archive_type="zip", output_dir="subject")
 
     def _pre_process_image(self, img_in):
+        """
+        Preprocess by resizing image
+        :param img_in: input image in numpy type
+        :return:
+        """
         im = cv2.imread(img_in, cv2.IMREAD_GRAYSCALE)
         if np.size(im) == 1:  # skip if the image data is corrupt.
             return None
@@ -313,26 +331,28 @@ class IAMDataset(dataset.ArrayDataset):
         return img_arr
 
     def _get_bb_of_item(self, item, height, width):
-        ''' Helper function to find the bounding box (bb) of an item in the xml file.
+        """
+        Helper function to find the bounding box (bb) of an item in the xml file.
         All the characters within the item are found and the left-most (min) and right-most (max + length)
         are found.
         The bounding box emcompasses the left and right most characters in the x and y direction.
 
         Parameter
         ---------
-        item: xml.etree object for a word/line/form.
+        :param item: xml.etree object for a word/line/form.
+        :type item: xml.etree
 
-        height: int
-            Height of the form to calculate percentages of bounding boxes
+        :param height: Height of the form to calculate percentages of bounding boxes
+        :type height: int
 
-        width: int
-            Width of the form to calculate percentages of bounding boxes
+        :param width: Width of the form to calculate percentages of bounding boxes
+        :type width: int
 
         Returns
         -------
-        list
-            The bounding box [x, y, w, h] in percentages that encompasses the item.
-        '''
+        :return: The bounding box [x, y, w, h] in percentages that encompasses the item.
+        :type return: list
+        """
 
         character_list = [a for a in item.iter("cmp")]
         if len(character_list) == 0:  # To account for some punctuations that have no words
@@ -350,26 +370,26 @@ class IAMDataset(dataset.ArrayDataset):
         return bb
 
     def _get_output_data(self, item, height, width):
-        ''' Function to obtain the output data (both text and bounding boxes).
+        """ Function to obtain the output data (both text and bounding boxes).
         Note that the bounding boxes are rescaled based on the rescale_ratio parameter.
 
         Parameter
         ---------
-        item: xml.etree
-            XML object for a word/line/form.
+        :param item: xml.etree object for a word/line/form.
+        :type item: xml.etree
 
-        height: int
-            Height of the form to calculate percentages of bounding boxes
+        :param height: Height of the form to calculate percentages of bounding boxes
+        :type height: int
 
-        width: int
-            Width of the form to calculate percentages of bounding boxes
+        :param width: Width of the form to calculate percentages of bounding boxes
+        :type width: int
 
         Returns
         -------
 
-        np.array
-            A numpy array ouf the output requested (text or the bounding box)
-        '''
+        :return: A numpy array ouf the output requested (text or the bounding box)
+        :type return: np.array
+        """
 
         output_data = []
         if self._output_data == "text":
@@ -391,7 +411,8 @@ class IAMDataset(dataset.ArrayDataset):
 
     def _change_bb_reference(self, bb, relative_bb, bb_reference_size, relative_bb_reference_size, output_size,
                              operator):
-        ''' Helper function to convert bounding boxes relative into another bounding bounding box.
+        """
+        Helper function to convert bounding boxes relative into another bounding bounding box.
         Parameter
         --------
         bb: [[int, int, int, int]]
@@ -417,7 +438,7 @@ class IAMDataset(dataset.ArrayDataset):
         bb: [[int, int, int, int]]
             Bounding boxes (x, y, w, h) in percentages that are converted
 
-        '''
+        """
         (x1, y1, x2, y2) = (bb[:, 0], bb[:, 1], bb[:, 0] + bb[:, 2], bb[:, 1] + bb[:, 3])
         (x1, y1, x2, y2) = (x1 * bb_reference_size[1], y1 * bb_reference_size[0],
                             x2 * bb_reference_size[1], y2 * bb_reference_size[0])
@@ -481,14 +502,15 @@ class IAMDataset(dataset.ArrayDataset):
         return image_data
 
     def _process_data(self):
-        ''' Function that iterates through the downloaded xml file to gather the input images and the
+        """
+        Function that iterates through the downloaded xml file to gather the input images and the
         corresponding output.
 
         Returns
         -------
-        pd.DataFrame
-            A pandas dataframe that contains the subject, image and output requested.
-        '''
+        :return: A pandas dataframe that contains the subject, image and output requested.
+        :type return: pd.DataFrame
+        """
         image_data = []
         xml_files = glob.glob(self._root + "/xml/*.xml")
         print("Processing data:")
@@ -518,31 +540,31 @@ class IAMDataset(dataset.ArrayDataset):
         self._save_dataframe_chunks(image_data, self.image_data_file_name)
         return image_data
 
-    def _process_subjects(self, train_subject_lists=["trainset", "validationset1", "validationset2"],
-                          test_subject_lists=["testset"]):
-        ''' Function to organise the list of subjects to training and testing.
+    def _process_subjects(self, train_subject_lists=None,
+                          test_subject_lists=None):
+        """
+        Function to organise the list of subjects to training and testing.
         The IAM dataset provides 4 files: trainset, validationset1, validationset2, and testset each
         with a list of subjects.
 
         Parameters
         ----------
+        :param The filenames of the list of subjects to be used for training the model
+        :type train_subject_lists: [str], default ["trainset", "validationset1", "validationset2"]
 
-        train_subject_lists: [str], default ["trainset", "validationset1", "validationset2"]
-            The filenames of the list of subjects to be used for training the model
-
-        test_subject_lists: [str], default ["testset"]
-            The filenames of the list of subjects to be used for testing the model
+        :param The filenames of the list of subjects to be used for testing the model
+        :type test_subject_lists: [str], default ["testset"]
 
         Returns
         -------
+        :return A list of subjects used for training, A list of subjects used for testing
+        :type train_subjects: [str], test_subjects: [str]
+        """
 
-        train_subjects: [str]
-            A list of subjects used for training
-
-        test_subjects: [str]
-            A list of subjects used for testing
-        '''
-
+        if test_subject_lists is None:
+            test_subject_lists = ["testset"]
+        if train_subject_lists is None:
+            train_subject_lists = ["trainset", "validationset1", "validationset2"]
         train_subjects = []
         test_subjects = []
         for train_list in train_subject_lists:
@@ -569,21 +591,19 @@ class IAMDataset(dataset.ArrayDataset):
         return train_subjects, test_subjects
 
     def _convert_subject_list(self, subject_list):
-        ''' Function to convert the list of subjects for the "word" parse method
+        """
+        Function to convert the list of subjects for the "word" parse method
 
         Parameters
         ----------
-
-        subject_lists: [str]
-            A list of subjects
+        :param subject_lists: A list of subjects
+        :type subject_lists: [str]
 
         Returns
         -------
-
-        subject_lists: [str]
-            A list of subjects that is compatible with the "word" parse method
-
-        '''
+        :return A list of subjects that is compatible with the "word" parse method
+        :type return: subject_lists: [str]
+        """
 
         if self._parse_method == "word":
             new_subject_list = []
@@ -595,15 +615,14 @@ class IAMDataset(dataset.ArrayDataset):
             return subject_list
 
     def _get_data(self):
-        ''' Function to get the data and to extract the data for training or testing
+        """
+        Function to get the data and to extract the data for training or testing
 
         Returns
         -------
-
-        pd.DataFram
-            A dataframe (subject, image, and output) that contains only the training/testing data
-
-        '''
+        :return: A dataframe (subject, image, and output) that contains only the training/testing data
+        :type return: pd.DataFram
+        """
 
         # Get the data
         if not os.path.isdir(self._root):
