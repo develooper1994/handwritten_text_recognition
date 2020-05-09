@@ -13,7 +13,7 @@ with open("requirements.txt", "r", encoding='utf-8') as fh:
 # builing doc
 system(r"pdoc --html --output-dir doc .\recognition\ocr")
 system(r"pdoc --html --output-dir doc .\recognition\recognizer.py .\recognition\get_models.py")
-system(r"pdoc --html --output-dir doc .\recognition\tests\tests.py")
+system(r"pdoc --html --output-dir doc .\recognition\utils\recognizer_utils.py")
 
 setup(
     name="recognition",  # Replace with your own username
