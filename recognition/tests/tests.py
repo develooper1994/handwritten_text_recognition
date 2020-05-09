@@ -3,6 +3,8 @@ import os
 import random
 from os import listdir
 from os.path import isfile, join
+import logging
+
 from pprint import pprint
 
 import cv2
@@ -12,7 +14,7 @@ import mxnet as mx
 from recognition.ocr.utils.iam_dataset import IAMDataset
 from recognition.ocr.utils.preprocess import histogram, all_togather
 from recognition.recognizer import recognize
-from recognition.utils.recognizer_utils import device_selecttion_helper
+from recognition.utils.recognizer_utils import device_selection_helper
 
 
 ## TEST
@@ -204,24 +206,28 @@ if __name__ == "__main__":
 
     num_device = 1
     device_queue = "cpu"
-    device = device_selecttion_helper(device=device_queue, num_device=num_device)
+    device = device_selection_helper(device=device_queue, num_device=num_device)
 
-    # %% recognize_test class
-    htr_test = recognize_test(show=True, net_parameter_pathname=net_parameter_paths, device=device)
-    result = htr_test()
+    import time
+    t0 = time.time()
 
-    # %% recognize class
-    image = mx.image.imread("TurkishHandwritten/elyaz2.jpeg")
-    image = image.asnumpy()
-    recog = recognize(image, net_parameter_paths, device=device)
-    result = recog()
+    # # %% recognize_test class
+    # htr_test = recognize_test(show=True, net_parameter_pathname=net_parameter_paths, device=device)
+    # result = htr_test()
+
+    # # %% recognize class
+    # image = mx.image.imread("TurkishHandwritten/elyaz2.jpeg")
+    # image = image.asnumpy()
+    # recog = recognize(image, net_parameter_paths, device=device)
+    # result = recog()
 
     # %% recognize_IAM_random_test class
     IAM_recog = recognize_IAM_random_test(net_parameter_pathname=net_parameter_paths, device=device)
     result = IAM_recog()
 
-    # %% recognize_IAM_test class
-    IAM_recog = recognize_IAM_test(net_parameter_pathname=net_parameter_paths, num_image=4, device=device)
-    result = IAM_recog()
+    # # %% recognize_IAM_test class
+    # IAM_recog = recognize_IAM_test(net_parameter_pathname=net_parameter_paths, num_image=4, device=device)
+    # result = IAM_recog()
 
     pprint(result)
+    print("Elapsed time", time.time()-t0)

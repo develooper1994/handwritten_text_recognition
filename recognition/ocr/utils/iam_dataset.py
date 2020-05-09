@@ -495,10 +495,14 @@ class IAMDataset(dataset.ArrayDataset):
             df_split.to_pickle(filename, protocol=2)
 
     def _load_dataframe_chunks(self, name):
-        image_data_chunks = []
-        for fn in sorted(glob.glob(name)):
-            df = pickle.load(open(fn, 'rb'))
-            image_data_chunks.append(df)
+        # Parallel(n_jobs=2)(delayed(sqrt)(i ** 2) for i in range(10))
+
+        image_data_chunks = [pickle.load(open(fn, 'rb')) for fn in sorted(glob.glob(name))]
+        # image_data_chunks = []
+        # for fn in sorted(glob.glob(name)):
+        #     df = pickle.load(open(fn, 'rb'))
+        #     image_data_chunks.append(df)
+
         image_data = pd.concat(image_data_chunks)
         return image_data
 

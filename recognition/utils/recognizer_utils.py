@@ -5,7 +5,7 @@ from recognition.ocr.utils.beam_search import ctcBeamSearch
 from recognition.ocr.utils.iam_dataset import IAMDataset
 
 
-def device_selecttion_helper(device=None, num_device=1):
+def device_selection_helper(device=None, num_device=1):
     """
     Helps to select possible devices.
     :param device:
@@ -80,3 +80,11 @@ def get_IAMDataset_test(credentials):
     test_ds = IAMDataset("form_original", credentials=credentials, train=False)
     return test_ds
 
+
+def singleton(cls):
+    instances = {}
+    def get_instance():
+        if cls not in instances:
+            instances[cls] = cls()
+        return instances[cls]
+    return get_instance()

@@ -13,18 +13,29 @@
 #     - split sentences based on punctuation
 #     - use CTC loss for ranking
 #     - meta model to learn to weight the scores from each thing
-import random
-from pprint import pprint
-import asyncio
 
-import gluonnlp as nlp
+# %% Standart Python modules
+import random
+import asyncio
+import logging
+import logging.config
+import functools
+
+# %% numerical modules
+import numpy as np
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
-import mxnet as mx
-import numpy as np
 from skimage import exposure
+
+# %% mxnet modules
+import mxnet as mx
+import gluonnlp as nlp
+
+# %% helper modules
+from pprint import pprint
 from tqdm import tqdm
 
+# %% my modules
 from recognition.get_models import async_get_models as get_models
 from recognition.ocr.handwriting_line_recognition import Network as HandwritingRecognitionNet, \
     handwriting_recognition_transform
@@ -36,11 +47,105 @@ from recognition.ocr.utils.iam_dataset import IAMDataset, crop_handwriting_page
 from recognition.ocr.utils.sclite_helper import ScliteHelper
 from recognition.ocr.utils.word_to_line import sort_bbs_line_by_line, crop_line_images
 from recognition.ocr.word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
-from recognition.utils.recognizer_utils import device_selecttion_helper, get_arg_max, get_beam_search, \
-    get_IAMDataset_test
+from recognition.utils.recognizer_utils import *
 
 random.seed(1)
 
+logging.basicConfig(filename="recognizer.py.log",
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    filemode='w')
+logger = logging.getLogger("root")
+# Setting the threshold of logger to DEBUG
+logger.setLevel(logging.DEBUG)
+
+# # Test messages
+# logger.debug("Harmless debug Message")
+# logger.info("Just an information")
+# logger.warning("Its a Warning")
+# logger.error("Did you try to divide by zero")
+# logger.critical("Internet is down")
+
+# CRITICAL = 50
+# FATAL = CRITICAL
+# ERROR = 40
+# WARNING = 30
+# WARN = WARNING
+# INFO = 20
+# DEBUG = 10
+# NOTSET = 0
+
+
+def log_print(message, level=logging.DEBUG, show=False):
+    logger.setLevel(level)
+    if show:
+        print(message, __name__)
+    else:
+        message = "{} {}".format(message, str(__name__))
+        logger.log(level, message)
+
+
+# exception_logger.py
+@singleton
+class Logger:
+    def __init__(self, level=logging.DEBUG):
+        """
+        Creates a logging object and returns it
+        """
+        self.logger = logging.getLogger("root")
+        self.fh = logging.FileHandler(r"recognizer.py.log")
+        self.logger.setLevel(level)
+        # create the logging file handler
+        fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        formatter = logging.Formatter(fmt)
+        self.fh.setFormatter(formatter)
+        # add handler to logger object
+        self.logger.addHandler(self.fh)
+
+    def __call__(self):
+        return self.logger
+
+    def exception(self):
+        """
+        A decorator that wraps the passed in function and logs
+        exceptions should one occur
+
+        @param logger: The logging object
+        """
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                try:
+                    return func(*args, **kwargs)
+                except:
+                    # log the exception
+                    err = "There was an exception in  "
+                    err += func.__name__
+                    self.logger.exception(err)
+                # re-raise the exception
+                raise
+            return wrapper
+        return decorator
+
+    # TODO! !!! Not ready !!!
+    def log_print(self, message, show="print"):
+        def decorator(func):
+            message = "{} {}".format(message, str(func.__name__))
+            def wrapper(*args, **kwargs):
+                if show == "print":
+                    print(message)
+                elif show == "logging":
+                    logger.log(self.level, message)
+                elif show == "both":
+                    print(message)
+                    logger.log(self.level, message)
+                elif show == "somewhere":
+                    return func(*args, **kwargs)
+                else:
+                    assert True, "I don't know what can i do for you"
+            return wrapper
+        return decorator
+
+
+# logger = Logger()
 
 # form_size = (1120, 800)
 
@@ -49,7 +154,6 @@ random.seed(1)
 # 2) words ->
 # 3) word to line(to protect the information context) ->
 # 4) word image to string line by line
-
 class recognize:
     """
     The main, One-step module is it.
@@ -135,13 +239,13 @@ class recognize:
 
         # !!! Slowest loading!
         # We use beam search to sample the output of the denoiser
-        print("Beam sampler created")
+        log_print("Beam sampler created")
         beam_sampler = nlp.model.BeamSearchSampler(beam_size=20,
                                                    decoder=self.denoiser.decode_logprob,
                                                    eos_id=EOS,
                                                    scorer=nlp.model.BeamSearchScorer(),
                                                    max_length=150)
-        print("Sequence generator created")
+        log_print("Sequence generator created")
         self.generator = SequenceGenerator(beam_sampler, language_model, vocab, self.device,
                                            moses_tokenizer,
                                            moses_detokenizer)
@@ -164,43 +268,43 @@ class recognize:
 
     async def __load_HandwritingRecognitionNet(self):
         await asyncio.sleep(0.01)  # event loop runs function for a while suspends
-        print("Handwriting line segmentation model loading")
+        log_print("Handwriting line segmentation model loading")
         self.handwriting_line_recognition_net = HandwritingRecognitionNet(rnn_hidden_states=512,
                                                                           rnn_layers=2, ctx=self.device,
                                                                           max_seq_len=160)
         self.handwriting_line_recognition_net.load_parameters(self.handwriting_line_recognition_net_parameter_path,
                                                               ctx=self.device)
         self.handwriting_line_recognition_net.hybridize()
-        print("Handwriting line segmentation model loading completed")
+        log_print("Handwriting line segmentation model loading completed")
 
     async def __load_DenoiserNet(self):
         await asyncio.sleep(0.01)  # event loop runs function for a while suspends
         # We use a seq2seq denoiser to translate noisy input to better output
-        print("Denoiser model loading")
+        log_print("Denoiser model loading")
         self.FEATURE_LEN = 150
         self.denoiser = Denoiser(alphabet_size=len(ALPHABET), max_src_length=self.FEATURE_LEN,
                                  max_tgt_length=self.FEATURE_LEN,
                                  num_heads=16, embed_size=256, num_layers=2)
         self.denoiser.load_parameters(self.denoiser_net_parameter_path, ctx=self.device)
         self.denoiser.hybridize(static_alloc=True)
-        print("Denoiser model loading completed")
+        log_print("Denoiser model loading completed")
 
     async def __load_WordSegmentationNet(self):
         await asyncio.sleep(0.01)  # event loop runs function for a while suspends
-        print("Word segmentation model loading")
+        log_print("Word segmentation model loading")
         self.word_segmentation_net = WordSegmentationNet(2, ctx=self.device)
         self.word_segmentation_net.load_parameters(self.word_segmentation_net_parameter_path)
         self.word_segmentation_net.hybridize()
-        print("Word segmentation model loading completed")
+        log_print("Word segmentation model loading completed")
 
     async def __load_SegmentationNetwork(self):
         await asyncio.sleep(0.01)  # event loop runs function for a while suspends
-        print("Paragraph segmentation model loading")
+        log_print("Paragraph segmentation model loading")
         self.paragraph_segmentation_net = SegmentationNetwork(ctx=self.device)
         self.paragraph_segmentation_net.cnn.load_parameters(self.paragraph_segmentation_net_parameter_path,
                                                             ctx=self.device)
         self.paragraph_segmentation_net.hybridize()
-        print("Paragraph segmentation model loading completed")
+        log_print("Paragraph segmentation model loading completed")
 
     def load_parameter_paths(self, net_parameter_pathname=None):
         # assert not isinstance(net_parameter_pathname, list) or isinstance(net_parameter_pathname, tuple), \
@@ -474,12 +578,12 @@ class recognize:
             for i, form_character_probs in enumerate(self.character_probs):
                 for j, line_character_probs in enumerate(form_character_probs):
                     decoded_line_am = get_arg_max(line_character_probs)
-                    # print("[AM]", decoded_line_am)
+                    log_print("[AM] %s" % str(decoded_line_am))
                     decoded_line_ams.append(decoded_line_am)
                     decoded_line_bs = get_beam_search(line_character_probs)
                     decoded_line_bss.append(decoded_line_bs)
                     decoded_line_denoiser = self.get_denoised(line_character_probs.asnumpy(), ctc_bs=False)
-                    # print("[D ]", decoded_line_denoiser)
+                    log_print("[D] %s" % str(decoded_line_denoiser))
                     decoded_line_denoisers.append(decoded_line_denoiser)
         else:
             for i, form_character_probs in enumerate(self.character_probs):
@@ -487,12 +591,12 @@ class recognize:
                                         figsize=(10, int(1 + 2.3 * len(form_character_probs))))
                 for j, line_character_probs in enumerate(form_character_probs):
                     decoded_line_am = get_arg_max(line_character_probs)
-                    print("[AM]", decoded_line_am)
+                    log_print("[AM] %s" % str(decoded_line_am))
                     decoded_line_ams.append(decoded_line_am)
                     decoded_line_bs = get_beam_search(line_character_probs)
                     decoded_line_bss.append(decoded_line_bs)
                     decoded_line_denoiser = self.get_denoised(line_character_probs.asnumpy(), ctc_bs=False)
-                    print("[D ]", decoded_line_denoiser)
+                    log_print("[D] %s" % str(decoded_line_denoiser))
                     decoded_line_denoisers.append(decoded_line_denoiser)
 
                     line_image = self.line_images_array[i][j]
@@ -540,7 +644,7 @@ class recognize:
             self.sclite.add_text([decoded_text], [actual_text])
 
         cer, er = self.sclite.get_cer()
-        print("Mean CER = {}".format(cer))
+        log_print("Mean CER = {}".format(cer))
         return cer
 
     def get_qualitative_results(self, denoise_func, credentials=None):
@@ -594,6 +698,7 @@ class recognize:
 
         cer, _ = self.sclite.get_cer()
         print("Mean CER = {}".format(cer))
+        logger.info("Mean CER = {}".format(cer))
         return cer
 
     def get_quantative_all(self):
@@ -605,25 +710,25 @@ class recognize:
         # CER with pre - segmented lines
         CER = []
         CER0 = self.get_qualitative_results_lines(get_arg_max)
-        print(CER0)
+        log_print("CER0 = {}".format(CER0))
         CER.append(CER0)
         CER1 = self.get_qualitative_results_lines(self.get_denoised)
-        print(CER1)
+        log_print("CER1 = {}".format(CER1))
         CER.append(CER1)
 
         # %% md
         # CER full pipeline
         CER2 = self.get_qualitative_results(get_arg_max)
-        print(CER2)
+        log_print("CER2 = {}".format(CER2))
         CER.append(CER2)
 
         CER3 = self.get_qualitative_results(get_beam_search)
-        print(CER3)
+        log_print("CER3 = {}".format(CER3))
         CER.append(CER3)
 
         # %%
         cer_denoiser = self.get_qualitative_results(self.get_denoised)
-        print(cer_denoiser)
+        log_print("cer_denoiser = {}".format(cer_denoiser))
         CER.append(cer_denoiser)
 
         return CER
@@ -642,15 +747,17 @@ class recognize:
         states = self.denoiser.decoder.init_state_from_encoder(encoder_outputs,
                                                                encoder_valid_length=src_valid_length)
         inputs = mx.nd.full(shape=(1,), ctx=src_seq.context, dtype=np.float32, val=BOS)
-        print(sentence)
-        print("Choice")
-        print(self.generator.generate_sequences(inputs, states, sentence))
+        log_print("sentence = {}".format(sentence))
+        log_print("Choise")
+
+        generated = self.generator.generate_sequences(inputs, states, sentence)
+        log_print("generated = {}".format(generated))
 
 
 if __name__ == "__main__":
     num_device = 1
     device_queue = "cpu"
-    device = device_selecttion_helper(device=device_queue, num_device=num_device)
+    device = device_selection_helper(device=device_queue, num_device=num_device)
 
     # %% recognize class
     image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")

@@ -177,13 +177,13 @@ https://www.pyimagesearch.com/2018/08/20/opencv-text-detection-east-text-detecto
 
 ### Further steps
     Handwriting reading process is developing gradually.
-    -Read "born digital"
-    -Read printed "born digital"
-    -Read handwritten by tablet or any input device
-    -Handwritten recorded under perfect conditions
-    -Ability to read horizontally
-    -Crowded historical texts
-    -Signage etc. perception
-    -.......
-    -Extract information from video taken in the wilderness
+    - Read "born digital"
+    - Read printed "born digital"
+    - Read handwritten by tablet or any input device
+    - Handwritten recorded under perfect conditions
+    - Ability to read horizontally
+    - Crowded historical texts
+    - Signage etc. perception
+    - .......
+    - Extract information from video taken in the wilderness
      or in the city (without any prior correction, like human)
