@@ -14,25 +14,21 @@
 #     - use CTC loss for ranking
 #     - meta model to learn to weight the scores from each thing
 
-# %% Standart Python modules
-import random
 import asyncio
 import logging
 import logging.config
-import functools
-
-# %% numerical modules
-import numpy as np
-import matplotlib.patches as patches
-import matplotlib.pyplot as plt
-from skimage import exposure
-
-# %% mxnet modules
-import mxnet as mx
-import gluonnlp as nlp
-
+# %% Standart Python modules
+import random
 # %% helper modules
 from pprint import pprint
+
+# %% mxnet modules
+import gluonnlp as nlp
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+# %% numerical modules
+import numpy as np
+from skimage import exposure
 from tqdm import tqdm
 
 # %% my modules
@@ -43,7 +39,7 @@ from recognition.ocr.paragraph_segmentation_dcnn import SegmentationNetwork, par
 from recognition.ocr.utils.denoiser_utils import SequenceGenerator
 from recognition.ocr.utils.encoder_decoder import Denoiser, ALPHABET, encode_char, EOS, BOS
 from recognition.ocr.utils.expand_bounding_box import expand_bounding_box
-from recognition.ocr.utils.iam_dataset import IAMDataset, crop_handwriting_page
+from recognition.ocr.utils.iam_dataset import crop_handwriting_page
 from recognition.ocr.utils.sclite_helper import ScliteHelper
 from recognition.ocr.utils.word_to_line import sort_bbs_line_by_line, crop_line_images
 from recognition.ocr.word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
