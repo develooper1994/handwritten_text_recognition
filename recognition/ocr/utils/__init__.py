@@ -1,1 +1,57 @@
-from recognition.ocr.utils import *
+try:
+    from recognition.ocr.utils import *
+    from recognition.ocr.utils import *
+    from recognition.ocr.utils.beam_search import *
+    from recognition.ocr.utils.BenthamDataset import *
+    from recognition.ocr.utils.denoiser_utils import *
+    from recognition.ocr.utils.draw_box_on_image import *
+    from recognition.ocr.utils.draw_text_on_image import *
+    from recognition.ocr.utils.encoder_decoder import *
+    from recognition.ocr.utils.expand_bounding_box import *
+    from recognition.ocr.utils.iam_dataset import *
+    from recognition.ocr.utils.iou_loss import *
+    from recognition.ocr.utils.lexicon_search import *
+    from recognition.ocr.utils.max_flow import *
+    from recognition.ocr.utils.ngram_dataset import *
+    from recognition.ocr.utils.noisy_forms_dataset import *
+    from recognition.ocr.utils.preprocess import *
+    from recognition.ocr.utils.sclite_helper import *
+    from recognition.ocr.utils.word_to_line import *
+except:
+    try:
+        from handwritten_text_recognition.recognition.ocr.utils import *
+        from handwritten_text_recognition.recognition.ocr.utils import *
+        from handwritten_text_recognition.recognition.ocr.utils.beam_search import *
+        from handwritten_text_recognition.recognition.ocr.utils.BenthamDataset import *
+        from handwritten_text_recognition.recognition.ocr.utils.denoiser_utils import *
+        from handwritten_text_recognition.recognition.ocr.utils.draw_box_on_image import *
+        from handwritten_text_recognition.recognition.ocr.utils.draw_text_on_image import *
+        from handwritten_text_recognition.recognition.ocr.utils.encoder_decoder import *
+        from handwritten_text_recognition.recognition.ocr.utils.expand_bounding_box import *
+        from handwritten_text_recognition.recognition.ocr.utils.iam_dataset import *
+        from handwritten_text_recognition.recognition.ocr.utils.iou_loss import *
+        from handwritten_text_recognition.recognition.ocr.utils.lexicon_search import *
+        from handwritten_text_recognition.recognition.ocr.utils.max_flow import *
+        from handwritten_text_recognition.recognition.ocr.utils.ngram_dataset import *
+        from handwritten_text_recognition.recognition.ocr.utils.noisy_forms_dataset import *
+        from handwritten_text_recognition.recognition.ocr.utils.preprocess import *
+        from handwritten_text_recognition.recognition.ocr.utils.sclite_helper import *
+        from handwritten_text_recognition.recognition.ocr.utils.word_to_line import *
+    except:
+        from recognition.handwritten_text_recognition.recognition.ocr.utils import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.beam_search import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.BenthamDataset import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.denoiser_utils import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.draw_box_on_image import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.draw_text_on_image import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.encoder_decoder import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.expand_bounding_box import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.iam_dataset import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.iou_loss import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.lexicon_search import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.max_flow import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.ngram_dataset import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.noisy_forms_dataset import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.preprocess import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.sclite_helper import *
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.word_to_line import *

@@ -11,11 +11,22 @@ import cv2
 import matplotlib.pyplot as plt
 import mxnet as mx
 
-from recognition.ocr.utils.iam_dataset import IAMDataset
-from recognition.ocr.utils.preprocess import histogram, all_togather
-from recognition.recognizer import recognize
-from recognition.utils.recognizer_utils import device_selection_helper
-
+try:
+    from recognition.ocr.utils.iam_dataset import IAMDataset
+    from recognition.ocr.utils.preprocess import histogram, all_togather
+    from recognition.recognizer import recognize
+    from recognition.utils.recognizer_utils import device_selection_helper
+except:
+    try:
+        from handwritten_text_recognition.recognition.ocr.utils.iam_dataset import IAMDataset
+        from handwritten_text_recognition.recognition.ocr.utils.preprocess import histogram, all_togather
+        from handwritten_text_recognition.recognition.recognizer import recognize
+        from handwritten_text_recognition.recognition.utils.recognizer_utils import device_selection_helper
+    except:
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.iam_dataset import IAMDataset
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.preprocess import histogram, all_togather
+        from recognition.handwritten_text_recognition.recognition.recognizer import recognize
+        from recognition.handwritten_text_recognition.recognition.utils.recognizer_utils import device_selection_helper
 
 ## TEST
 # Write test into this class

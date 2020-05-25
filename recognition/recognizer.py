@@ -32,18 +32,57 @@ from skimage import exposure
 from tqdm import tqdm
 
 # %% my modules
-from recognition.get_models import async_get_models as get_models
-from recognition.ocr.handwriting_line_recognition import Network as HandwritingRecognitionNet, \
-    handwriting_recognition_transform
-from recognition.ocr.paragraph_segmentation_dcnn import SegmentationNetwork, paragraph_segmentation_transform
-from recognition.ocr.utils.denoiser_utils import SequenceGenerator
-from recognition.ocr.utils.encoder_decoder import Denoiser, ALPHABET, encode_char, EOS, BOS
-from recognition.ocr.utils.expand_bounding_box import expand_bounding_box
-from recognition.ocr.utils.iam_dataset import crop_handwriting_page
-from recognition.ocr.utils.sclite_helper import ScliteHelper
-from recognition.ocr.utils.word_to_line import sort_bbs_line_by_line, crop_line_images
-from recognition.ocr.word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
-from recognition.utils.recognizer_utils import *
+try:
+    from recognition.get_models import async_get_models as get_models
+    from recognition.ocr.handwriting_line_recognition import Network as HandwritingRecognitionNet, \
+        handwriting_recognition_transform
+    from recognition.ocr.paragraph_segmentation_dcnn import SegmentationNetwork, paragraph_segmentation_transform
+    from recognition.ocr.utils.denoiser_utils import SequenceGenerator
+    from recognition.ocr.utils.encoder_decoder import Denoiser, ALPHABET, encode_char, EOS, BOS
+    from recognition.ocr.utils.expand_bounding_box import expand_bounding_box
+    from recognition.ocr.utils.iam_dataset import crop_handwriting_page
+    from recognition.ocr.utils.sclite_helper import ScliteHelper
+    from recognition.ocr.utils.word_to_line import sort_bbs_line_by_line, crop_line_images
+    from recognition.ocr.word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
+    from recognition.utils.recognizer_utils import *
+except:
+    try:
+        from handwritten_text_recognition.recognition.get_models import async_get_models as get_models
+        from handwritten_text_recognition.recognition.ocr.handwriting_line_recognition import \
+            Network as HandwritingRecognitionNet, handwriting_recognition_transform
+        from handwritten_text_recognition.recognition.ocr.paragraph_segmentation_dcnn import \
+            SegmentationNetwork, paragraph_segmentation_transform
+        from handwritten_text_recognition.recognition.ocr.utils.denoiser_utils import SequenceGenerator
+        from handwritten_text_recognition.recognition.ocr.utils.encoder_decoder import Denoiser, ALPHABET, \
+            encode_char, EOS, BOS
+        from handwritten_text_recognition.recognition.ocr.utils.expand_bounding_box import expand_bounding_box
+        from handwritten_text_recognition.recognition.ocr.utils.iam_dataset import crop_handwriting_page
+        from handwritten_text_recognition.recognition.ocr.utils.sclite_helper import ScliteHelper
+        from handwritten_text_recognition.recognition.ocr.utils.word_to_line import sort_bbs_line_by_line, \
+            crop_line_images
+        from handwritten_text_recognition.recognition.ocr.word_and_line_segmentation import \
+            SSD as WordSegmentationNet, predict_bounding_boxes
+        from handwritten_text_recognition.recognition.utils.recognizer_utils import *
+    except:
+        from recognition.handwritten_text_recognition.recognition.get_models import async_get_models as get_models
+        from recognition.handwritten_text_recognition.recognition.ocr.handwriting_line_recognition import \
+            Network as HandwritingRecognitionNet, \
+            handwriting_recognition_transform
+        from recognition.handwritten_text_recognition.recognition.ocr.paragraph_segmentation_dcnn import \
+            SegmentationNetwork, paragraph_segmentation_transform
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.denoiser_utils import SequenceGenerator
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.encoder_decoder import Denoiser, ALPHABET, \
+            encode_char, EOS, BOS
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.expand_bounding_box import \
+            expand_bounding_box
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.iam_dataset import crop_handwriting_page
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.sclite_helper import ScliteHelper
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.word_to_line import sort_bbs_line_by_line, \
+            crop_line_images
+        from recognition.handwritten_text_recognition.recognition.ocr.word_and_line_segmentation import \
+            SSD as WordSegmentationNet, predict_bounding_boxes
+        from recognition.handwritten_text_recognition.recognition.utils.recognizer_utils import *
+
 
 random.seed(1)
 
@@ -107,6 +146,7 @@ class Logger:
 
         @param logger: The logging object
         """
+
         def decorator(func):
             def wrapper(*args, **kwargs):
                 try:
@@ -118,13 +158,16 @@ class Logger:
                     self.logger.exception(err)
                 # re-raise the exception
                 raise
+
             return wrapper
+
         return decorator
 
     # TODO! !!! Not ready !!!
     def log_print(self, message, show="print"):
         def decorator(func):
             message = "{} {}".format(message, str(func.__name__))
+
             def wrapper(*args, **kwargs):
                 if show == "print":
                     print(message)
@@ -137,7 +180,9 @@ class Logger:
                     return func(*args, **kwargs)
                 else:
                     assert True, "I don't know what can i do for you"
+
             return wrapper
+
         return decorator
 
 

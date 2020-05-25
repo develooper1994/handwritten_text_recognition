@@ -11,6 +11,7 @@ class get_models():
     """
     Download network-parameters from link
     """
+
     def __init__(self, all_messages, all_links, model_dir='models', dirname=None):
         """
         Network-parameters and some dataset pieces downloader initializer
@@ -88,10 +89,12 @@ class get_models():
         print("Finished")
         return True
 
+
 class async_get_models():
     """
     Download network-parameters from link
     """
+
     def __init__(self, all_messages, all_links, model_dir='models', dirname=None):
         """
         Network-parameters and some dataset pieces downloader initializer
@@ -184,8 +187,10 @@ class async_get_models():
         print("Finished")
         return True
 
+
 if __name__ == "__main__":
     import time
+
     all_messages = [
         # Parameters
         "Downloading Paragraph Segmentation parameters",

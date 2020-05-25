@@ -1,9 +1,19 @@
 import mxnet as mx
 
-from recognition.ocr.handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
-from recognition.ocr.utils.beam_search import ctcBeamSearch
-from recognition.ocr.utils.iam_dataset import IAMDataset
-
+try:
+    from recognition.ocr.handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
+    from recognition.ocr.utils.beam_search import ctcBeamSearch
+    from recognition.ocr.utils.iam_dataset import IAMDataset
+except:
+    try:
+        from handwritten_text_recognition.recognition.ocr.handwriting_line_recognition import \
+            decode as decoder_handwriting, alphabet_encoding
+        from handwritten_text_recognition.recognition.ocr.utils.beam_search import ctcBeamSearch
+        from handwritten_text_recognition.recognition.ocr.utils.iam_dataset import IAMDataset
+    except:
+        from recognition.handwritten_text_recognition.recognition.ocr.handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.beam_search import ctcBeamSearch
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.iam_dataset import IAMDataset
 
 def device_selection_helper(device=None, num_device=1):
     """

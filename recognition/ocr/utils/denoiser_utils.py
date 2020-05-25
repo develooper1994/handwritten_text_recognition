@@ -3,8 +3,13 @@ import leven
 import mxnet as mx
 import numpy as np
 
-from recognition.ocr.utils.encoder_decoder import decode_char
-
+try:
+    from recognition.ocr.utils.encoder_decoder import decode_char
+except:
+    try:
+        from handwritten_text_recognition.recognition.ocr.utils.encoder_decoder import decode_char
+    except:
+        from recognition.handwritten_text_recognition.recognition.ocr.utils.encoder_decoder import decode_char
 
 class SequenceGenerator:
 
