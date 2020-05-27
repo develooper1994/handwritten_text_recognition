@@ -226,35 +226,15 @@ class recognize:
         :param is_test: If it is True than activate SCTK tool to get quantative results.
             DEFAULT=False
         """
-        # %% Default-Parameters
-        self.__set_default_parameters(ScliteHelperPATH, crop, device, form_size, image, is_test, show)
+        self.reload(ScliteHelperPATH, crop, device, form_size, image, is_test, net_parameter_pathname, show)
 
+    def reload(self, ScliteHelperPATH, crop, device, form_size, image, is_test, net_parameter_pathname, show):
+        # %% Default-Parameters
+        self.__set_default_parameters(image, form_size, device, crop, ScliteHelperPATH, show, is_test)
         # %% Network-Parameters
         self.__set_default_networks(net_parameter_pathname)
 
-    def __set_default_parameters(self, ScliteHelperPATH, crop, device, form_size, image, is_test, show):
-        if device is None:
-            device = mx.cpu()
-        self.device = device
-        self.show = show
-        self.crop = crop
-        self.is_test = is_test
-        self.form_size = form_size
-        self.predicted_text_area = 0
-        self.croped_image = 0
-        self.segmented_paragraph_size = (700, 700)
-        self.line_image_size = (60, 800)
-        self.predicted_bb = 0
-        self.min_c = 0.1
-        self.overlap_thres = 0.1
-        self.topk = 600
-        self.line_images_array = []
-        self.character_probs = []
-        if ScliteHelperPATH is None:
-            ScliteHelperPATH = '../SCTK/bin'
-        if self.is_test:
-            self.sclite = ScliteHelper(ScliteHelperPATH)
-        # download_models()
+    def reload_default_parameters(self, image, form_size, device, crop, ScliteHelperPATH, show, is_test):
         assert type(image) is np.ndarray, "Please enter numpy array"
         self.image = image
         # self.image = mx.nd.array(image)  # converts to MXNet-NDarray
@@ -265,6 +245,32 @@ class recognize:
         # print(image.shape)
         # self.image = self.image[np.newaxis, :]  # add batch dim
         # # print(image.shape)
+        self.form_size = form_size
+        if device is None:
+            device = mx.cpu()
+        self.device = device
+        self.crop = crop
+        if ScliteHelperPATH is None:
+            ScliteHelperPATH = '../SCTK/bin'
+        if self.is_test:
+            self.sclite = ScliteHelper(ScliteHelperPATH)
+        self.show = show
+        self.is_test = is_test
+        # network hyperparameters
+        self.predicted_text_area = 0
+        self.croped_image = 0
+        self.segmented_paragraph_size = (700, 700)
+        self.line_image_size = (60, 800)
+        self.predicted_bb = 0
+        self.min_c = 0.1
+        self.overlap_thres = 0.1
+        self.topk = 600
+        self.line_images_array = []
+        self.character_probs = []
+        # download_models()
+
+    def __set_default_parameters(self, image, form_size, device, crop, ScliteHelperPATH, show, is_test):
+        self.reload_default_parameters(image, form_size, device, crop, ScliteHelperPATH, show, is_test)
 
     def __set_default_networks(self, net_parameter_pathname):
         # !!! slower while loding async this function !!!
@@ -420,16 +426,13 @@ class recognize:
                 'decoded': decoded
             }
         """
-        croped_image, predicted_text_area = self.image_preprocess(expand_bb_scale_x, expand_bb_scale_y,
-                                                                  segmented_paragraph_size)
-
-        predicted_bb = self.word_detection()
-        line_images_array = self.word_to_line()
-        character_probs = self.handwriting_recognition_probs()
-
-        decoded = self.qualitative_result()
+        # detection
+        predicted_text_area, croped_image, predicted_bb = self.make_detection(expand_bb_scale_x, expand_bb_scale_y,
+                                                                         segmented_paragraph_size)
+        # recognition
+        line_images_array, character_probs, decoded = self.make_recognition()
         # decoded_line_ams, decoded_line_bss, decoded_line_denoisers = decoded
-        results = {
+        all_results = {
             'predicted_text_area': predicted_text_area,
             'croped_image': croped_image,
             'predicted_bb': predicted_bb,
@@ -437,7 +440,30 @@ class recognize:
             'character_probs': character_probs,
             'decoded': decoded
         }
-        return results
+        return all_results
+
+    def make_detection(self, expand_bb_scale_x, expand_bb_scale_y, segmented_paragraph_size):
+        """
+        Making detection
+        :param expand_bb_scale_x: scale constant for x axis
+        :param expand_bb_scale_y: scale constant for y axis
+        :param segmented_paragraph_size: segmented paragraph size
+        :return: predicted_text_area, croped_image, predicted_bb
+        """
+        croped_image, predicted_text_area = self.image_preprocess(expand_bb_scale_x, expand_bb_scale_y,
+                                                                  segmented_paragraph_size)
+        predicted_bb = self.word_detection()
+        return predicted_text_area, croped_image, predicted_bb
+
+    def make_recognition(self):
+        """
+        Making recognition
+        :return: line_images_array, character_probs, decoded(string)
+        """
+        line_images_array = self.word_to_line()
+        character_probs = self.handwriting_recognition_probs()
+        decoded = self.qualitative_result()
+        return line_images_array, character_probs, decoded
 
     def image_preprocess(self, expand_bb_scale_x, expand_bb_scale_y, segmented_paragraph_size):
         predicted_text_area = self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
@@ -505,13 +531,15 @@ class recognize:
 
     ## Line/word segmentation
     # Given a form with only handwritten text, predict a bounding box for each word.The model was trained with https://github.com / ThomasDelteil / Gluon_OCR_LSTM_CTC / blob / language_model / word_segmentation.py
-    def word_detection(self):
+    def word_detection(self, image=None):
         """
         Word detector with SSD(single shot detection)
         :return: predicted bounding box for each word
         """
         # paragraph_segmented_image = paragraph_segmented_images[0]
-        paragraph_segmented_image = self.image
+        if image is None:
+            image = self.image
+        paragraph_segmented_image = image
         self.predicted_bb = predict_bounding_boxes(self.word_segmentation_net, paragraph_segmented_image, self.min_c,
                                                    self.overlap_thres,
                                                    self.topk, self.device)
@@ -534,12 +562,15 @@ class recognize:
 
     ## Word to line image processing
     # Algorithm to sort then group all words within a line together.
-    def word_to_line(self):
+    def word_to_line(self, image=None):
         """
         Converts word bounding boxes to line bounding boxes by overlapping.
+        :param image: Image in numpy format. There is if you want to change image after
         :return: croped line images array.
         """
-        paragraph_segmented_image = self.image
+        if image is None:
+            image = self.image
+        paragraph_segmented_image = image
 
         line_bbs = sort_bbs_line_by_line(self.predicted_bb, y_overlap=0.4)
         line_images = crop_line_images(paragraph_segmented_image, line_bbs)
@@ -565,12 +596,15 @@ class recognize:
 
     ## Handwriting recognition
     # Given each line of text, predict a string of the handwritten text. This network was trained with https://github.com/ThomasDelteil/Gluon_OCR_LSTM_CTC/blob/language_model/handwriting_line_recognition.py
-    def handwriting_recognition_probs(self):
+    def handwriting_recognition_probs(self, line_images_array=None):
         """
         Calculates character probabilities
         :return: Character probabilities
         """
-        for line_images in self.line_images_array:
+        if line_images_array is None:
+            line_images_array = self.line_images_array
+
+        for line_images in line_images_array:
             form_character_prob = []
             for i, line_image in enumerate(line_images):
                 line_image = handwriting_recognition_transform(line_image, self.line_image_size)

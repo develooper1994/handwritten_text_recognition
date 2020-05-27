@@ -1,6 +1,7 @@
-from setuptools import setup, find_packages
-from os import path, system
 from io import open
+from os import path, system
+
+from setuptools import setup, find_packages
 
 here = path.abspath(path.dirname(__file__))
 

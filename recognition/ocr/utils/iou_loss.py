@@ -1,8 +1,9 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from mxnet.gluon.loss import Loss
 from mxnet import gluon
+from mxnet.gluon.loss import Loss
+
 
 class IOU_loss(Loss):
     r"""Calculates the iou between `pred` and `label`.

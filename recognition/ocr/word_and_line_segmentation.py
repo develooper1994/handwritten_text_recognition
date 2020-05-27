@@ -1,24 +1,18 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import time
-import random
-import os
-import cv2
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import argparse
+import os
+import random
 
 import mxnet as mx
-from mxnet.contrib.ndarray import MultiBoxPrior, MultiBoxTarget, MultiBoxDetection, box_nms
 import numpy as np
-from skimage.draw import line_aa
-from skimage import transform as skimage_tf
-
-from mxnet import nd, autograd, gluon
-from mxnet.image import resize_short
 from mxboard import SummaryWriter
+from mxnet import nd, autograd, gluon
+from mxnet.contrib.ndarray import MultiBoxPrior, MultiBoxTarget, MultiBoxDetection, box_nms
 from mxnet.gluon.model_zoo.vision import resnet34_v1
+from mxnet.image import resize_short
+from skimage import transform as skimage_tf
 
 np.seterr(all='raise')
 

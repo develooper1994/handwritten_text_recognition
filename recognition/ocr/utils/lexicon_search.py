@@ -1,24 +1,11 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import nltk
-import numpy as np
-from nltk.metrics import *
-from nltk.util import ngrams
-import enchant  # spell checker library pyenchant
-from enchant.checker import SpellChecker
-from nltk.stem import PorterStemmer
-from nltk.corpus import words
-import string
-import re
 from collections import Counter
+
+import enchant  # spell checker library pyenchant
+import numpy as np
 from nltk.corpus import brown
-
-from nltk.probability import FreqDist
-from nltk.metrics import edit_distance
-
-from sympound import sympound
-import re
 from weighted_levenshtein import lev
 
 

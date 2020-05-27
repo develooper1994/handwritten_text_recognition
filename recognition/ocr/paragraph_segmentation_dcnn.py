@@ -3,21 +3,15 @@
 
 import argparse
 import multiprocessing
-import time
-import random
 import os
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+import random
 
 import mxnet as mx
 import numpy as np
-from skimage.draw import line_aa
-from skimage import transform as skimage_transform
-
+from mxboard import SummaryWriter
 from mxnet import nd, autograd, gluon
 from mxnet.image import resize_short
-from mxboard import SummaryWriter
+from skimage import transform as skimage_transform
 
 mx.random.seed(1)
 

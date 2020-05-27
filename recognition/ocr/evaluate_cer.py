@@ -1,25 +1,20 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import difflib
 import logging
-import math
-import string
 import random
 
-import numpy as np
 import mxnet as mx
+import numpy as np
 from tqdm import tqdm
 
-
-from .paragraph_segmentation_dcnn import SegmentationNetwork, paragraph_segmentation_transform
-from .word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
 from .handwriting_line_recognition import Network as HandwritingRecognitionNet, handwriting_recognition_transform
-from .handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
-
+from .handwriting_line_recognition import decode as decoder_handwriting
+from .paragraph_segmentation_dcnn import paragraph_segmentation_transform
 from .utils.iam_dataset import IAMDataset, crop_handwriting_page
 from .utils.sclite_helper import ScliteHelper
 from .utils.word_to_line import sort_bbs_line_by_line, crop_line_images
+from .word_and_line_segmentation import SSD as WordSegmentationNet, predict_bounding_boxes
 
 # Setup
 logging.basicConfig(level=logging.DEBUG)

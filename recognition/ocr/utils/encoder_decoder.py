@@ -5,25 +5,19 @@
 __all__ = ['TransformerEncoder', 'TransformerDecoder',
            'get_transformer_encoder_decoder']
 
-from functools import partial
 import math
-import os
 import string
-import warnings
+from functools import partial
 
-
-
-from gluonnlp.model import AttentionCell, MLPAttentionCell, DotProductAttentionCell, MultiHeadAttentionCell
-import gluonnlp as nlp
 import mxnet as mx
+import numpy as np
+from gluonnlp.model import AttentionCell, MLPAttentionCell, DotProductAttentionCell, MultiHeadAttentionCell
+from mxnet import gluon
+from mxnet.gluon import nn
 from mxnet.gluon import rnn
 from mxnet.gluon.block import Block
-from mxnet import cpu, gluon
-from mxnet.gluon import nn
 from mxnet.gluon.block import HybridBlock
 from mxnet.gluon.loss import SoftmaxCELoss
-import numpy as np
-
 
 ALPHABET = ['<UNK>', '<PAD>', '<BOS>', '<EOS>']+list(' ' + string.ascii_letters + string.digits + string.punctuation)
 ALPHABET_INDEX = {letter: index for index, letter in enumerate(ALPHABET)} # { a: 0, b: 1, etc}

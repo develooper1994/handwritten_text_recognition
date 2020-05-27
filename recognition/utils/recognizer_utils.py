@@ -15,6 +15,7 @@ except:
         from recognition.handwritten_text_recognition.recognition.ocr.utils.beam_search import ctcBeamSearch
         from recognition.handwritten_text_recognition.recognition.ocr.utils.iam_dataset import IAMDataset
 
+
 def device_selection_helper(device=None, num_device=1):
     """
     Helps to select possible devices.

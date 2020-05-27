@@ -3,8 +3,6 @@ import os
 import random
 from os import listdir
 from os.path import isfile, join
-import logging
-
 from pprint import pprint
 
 import cv2

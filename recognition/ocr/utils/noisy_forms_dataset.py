@@ -1,11 +1,13 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import numpy as np
-import pickle
 import os
+import pickle
+
+import numpy as np
 
 from .iam_dataset import IAMDataset
+
 
 class Noisy_forms_dataset:
     '''

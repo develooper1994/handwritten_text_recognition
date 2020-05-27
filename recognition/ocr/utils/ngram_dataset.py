@@ -1,10 +1,12 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import numpy as np
 import os
 import pickle
+
+import numpy as np
 from mxnet.gluon.data import dataset
+
 
 class Ngram_dataset(dataset.ArrayDataset):
     '''

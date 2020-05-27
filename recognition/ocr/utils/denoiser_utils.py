@@ -1,7 +1,6 @@
 import gluonnlp as nlp
 import leven
 import mxnet as mx
-import numpy as np
 
 try:
     from recognition.ocr.utils.encoder_decoder import decode_char

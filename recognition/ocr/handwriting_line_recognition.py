@@ -1,24 +1,19 @@
 # Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import time
-import random
-import os
-import matplotlib.pyplot as plt
 import argparse
+import os
+import random
 
 import mxnet as mx
 import numpy as np
-from skimage import transform as skimage_tf
-from skimage import exposure
-
-from mxnet import nd, autograd, gluon
 from mxboard import SummaryWriter
+from mxnet import nd, autograd, gluon
 from mxnet.gluon.model_zoo.vision import resnet34_v1
+from skimage import exposure
+from skimage import transform as skimage_tf
 
 np.seterr(all='raise')
-
-import multiprocessing
 
 mx.random.seed(1)
 

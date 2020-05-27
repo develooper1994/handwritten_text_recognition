@@ -3,7 +3,7 @@
 
 import numpy as np
 from skimage.draw import line_aa
-import matplotlib.pyplot as plt
+
 
 def draw_line(image, y1, x1, y2, x2, line_type):
     rr, cc, val = line_aa(y1, x1, y2, x2)
