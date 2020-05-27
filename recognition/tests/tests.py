@@ -227,14 +227,16 @@ if __name__ == "__main__":
     # result = htr_test()
 
     # # %% recognize class
-    # image = mx.image.imread("TurkishHandwritten/elyaz2.jpeg")
-    # image = image.asnumpy()
-    # recog = recognize(image, net_parameter_paths, device=device)
-    # result = recog()
+    image_name = "TurkishHandwritten/elyaz2.jpeg"
+    # image_name = r"C:\Users\selcu\PycharmProjects\ocr_toolkit\recognition\handwritten_text_recognition\recognition\tests\TurkishHandwritten\elyaz2_crops\crop_0.png"
+    image = mx.image.imread(image_name)
+    image = image.asnumpy()
+    recog = recognize(image, net_parameter_paths, device=device)
+    result = recog()
 
     # %% recognize_IAM_random_test class
-    IAM_recog = recognize_IAM_random_test(net_parameter_pathname=net_parameter_paths, device=device)
-    result = IAM_recog()
+    # IAM_recog = recognize_IAM_random_test(net_parameter_pathname=net_parameter_paths, device=device)
+    # result = IAM_recog()
 
     # # %% recognize_IAM_test class
     # IAM_recog = recognize_IAM_test(net_parameter_pathname=net_parameter_paths, num_image=4, device=device)

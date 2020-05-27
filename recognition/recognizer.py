@@ -420,11 +420,8 @@ class recognize:
                 'decoded': decoded
             }
         """
-        predicted_text_area = self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
-
-        croped_image = None
-        if self.crop:
-            croped_image = self.crop_image(segmented_paragraph_size)
+        croped_image, predicted_text_area = self.image_preprocess(expand_bb_scale_x, expand_bb_scale_y,
+                                                                  segmented_paragraph_size)
 
         predicted_bb = self.word_detection()
         line_images_array = self.word_to_line()
@@ -441,6 +438,13 @@ class recognize:
             'decoded': decoded
         }
         return results
+
+    def image_preprocess(self, expand_bb_scale_x, expand_bb_scale_y, segmented_paragraph_size):
+        predicted_text_area = self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
+        croped_image = None
+        if self.crop:
+            croped_image = self.crop_image(segmented_paragraph_size)
+        return croped_image, predicted_text_area
 
     # %% network functions
     ## Paragraph segmentation
