@@ -14,20 +14,22 @@
 #     - use CTC loss for ranking
 #     - meta model to learn to weight the scores from each thing
 
+# %% Standart Python modules
 import asyncio
 import logging
 import logging.config
-# %% Standart Python modules
 import random
+
 # %% helper modules
 from pprint import pprint
 
 # %% mxnet modules
 import gluonnlp as nlp
-import matplotlib.patches as patches
-import matplotlib.pyplot as plt
+
 # %% numerical modules
 import numpy as np
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
 from skimage import exposure
 from tqdm import tqdm
 
@@ -83,7 +85,6 @@ except:
             SSD as WordSegmentationNet, predict_bounding_boxes
         from recognition.handwritten_text_recognition.recognition.utils.recognizer_utils import *
 
-
 random.seed(1)
 
 logging.basicConfig(filename="recognizer.py.log",
@@ -92,6 +93,7 @@ logging.basicConfig(filename="recognizer.py.log",
 logger = logging.getLogger("root")
 # Setting the threshold of logger to DEBUG
 logger.setLevel(logging.DEBUG)
+
 
 # # Test messages
 # logger.debug("Harmless debug Message")
@@ -205,7 +207,7 @@ class recognize:
         result = recog()
     """
 
-    def __init__(self, image, net_parameter_pathname=None, form_size=(1120, 800), device=None, crop=False,
+    def __init__(self, image, net_parameter_path=None, form_size=(1120, 800), device=None, crop=False,
                  ScliteHelperPATH=None, show=False, is_test=False):
         """
         Handwritten Text Recognization in one step
@@ -226,13 +228,13 @@ class recognize:
         :param is_test: If it is True than activate SCTK tool to get quantative results.
             DEFAULT=False
         """
-        self.reload(ScliteHelperPATH, crop, device, form_size, image, is_test, net_parameter_pathname, show)
+        self.reload(ScliteHelperPATH, crop, device, form_size, image, is_test, net_parameter_path, show)
 
-    def reload(self, ScliteHelperPATH, crop, device, form_size, image, is_test, net_parameter_pathname, show):
+    def reload(self, ScliteHelperPATH, crop, device, form_size, image, is_test, net_parameter_path, show):
         # %% Default-Parameters
         self.__set_default_parameters(image, form_size, device, crop, ScliteHelperPATH, show, is_test)
         # %% Network-Parameters
-        self.__set_default_networks(net_parameter_pathname)
+        self.__set_default_networks(net_parameter_path)
 
     def reload_default_parameters(self, image, form_size, device, crop, ScliteHelperPATH, show, is_test):
         assert type(image) is np.ndarray, "Please enter numpy array"
@@ -252,31 +254,49 @@ class recognize:
         self.crop = crop
         if ScliteHelperPATH is None:
             ScliteHelperPATH = '../SCTK/bin'
-        if self.is_test:
+        if is_test:
             self.sclite = ScliteHelper(ScliteHelperPATH)
-        self.show = show
         self.is_test = is_test
+        self.show = show
         # network hyperparameters
-        self.predicted_text_area = 0
-        self.croped_image = 0
-        self.segmented_paragraph_size = (700, 700)
-        self.line_image_size = (60, 800)
-        self.predicted_bb = 0
-        self.min_c = 0.1
-        self.overlap_thres = 0.1
-        self.topk = 600
-        self.line_images_array = []
-        self.character_probs = []
+        self.reload_network_hyperparameters()
         # download_models()
+
+    def reload_network_hyperparameters(self, predicted_text_area=0, croped_image=0, predicted_bb=0,
+                                       min_c=0.1, overlap_thres=0.1, topk=600,
+                                       segmented_paragraph_size=None, line_image_size=None,
+                                       line_images_array=None, character_probs=None):
+        self.predicted_text_area = predicted_text_area
+        self.croped_image = croped_image
+        self.predicted_bb = predicted_bb  # TODO! change for external detection.
+        self.min_c = min_c
+        self.overlap_thres = overlap_thres
+        self.topk = topk
+
+        self.segmented_paragraph_size = segmented_paragraph_size
+        if segmented_paragraph_size is None:
+            self.segmented_paragraph_size = (700, 700)
+
+        self.line_image_size = line_image_size
+        if line_image_size is None:
+            self.line_image_size = (60, 800)
+
+        self.line_images_array = line_images_array
+        if line_images_array is None:
+            self.line_images_array = []
+
+        self.character_probs = character_probs
+        if character_probs is None:
+            self.character_probs = []
 
     def __set_default_parameters(self, image, form_size, device, crop, ScliteHelperPATH, show, is_test):
         self.reload_default_parameters(image, form_size, device, crop, ScliteHelperPATH, show, is_test)
 
-    def __set_default_networks(self, net_parameter_pathname):
+    def __set_default_networks(self, net_parameter_path):
         # !!! slower while loding async this function !!!
         # run it async
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.__load_all_networks(net_parameter_pathname))
+        loop.run_until_complete(self.__load_all_networks(net_parameter_path))
 
         ## We use a language model in order to rank the propositions from the denoiser
         language_model, vocab = nlp.model.big_rnn_lm_2048_512(dataset_name='gbw', pretrained=True,
@@ -297,9 +317,9 @@ class recognize:
                                            moses_tokenizer,
                                            moses_detokenizer)
 
-    async def __load_all_networks(self, net_parameter_pathname):
-        net_parameter_pathname = self.load_parameter_paths(net_parameter_pathname)
-        self.net_parameter_paths = net_parameter_pathname
+    async def __load_all_networks(self, net_parameter_path):
+        net_parameter_paths = self.load_parameter_paths(net_parameter_path)
+        self.net_parameter_paths = net_parameter_paths
         self.denoiser_net_parameter_path = self.net_parameter_paths[0]
         self.handwriting_line_recognition_net_parameter_path = self.net_parameter_paths[1]
         self.paragraph_segmentation_net_parameter_path = self.net_parameter_paths[2]
@@ -353,19 +373,20 @@ class recognize:
         self.paragraph_segmentation_net.hybridize()
         log_print("Paragraph segmentation model loading completed")
 
-    def load_parameter_paths(self, net_parameter_pathname=None):
+    def load_parameter_paths(self, net_parameter_path=None):
         # assert not isinstance(net_parameter_pathname, list) or isinstance(net_parameter_pathname, tuple), \
         #     "Please enter net_parameter_pathname in List or tuple type"
 
-        if net_parameter_pathname is None:
+        if net_parameter_path is None:
             # models must be sorted by ascending order!
-            net_parameter_pathname = [
-                "models/denoiser2.params",
-                "models/handwriting_line8.params",
-                "models/paragraph_segmentation2.params",
-                "models/word_segmentation2.params",
-            ]
-        if net_parameter_pathname == "download".lower():
+            net_parameter_path = "models/"
+        net_parameter_pathname = [
+            net_parameter_path+"denoiser2.params",
+            net_parameter_path+"handwriting_line8.params",
+            net_parameter_path+"paragraph_segmentation2.params",
+            net_parameter_path+"word_segmentation2.params",
+        ]
+        if net_parameter_path == "download".lower():
             all_messages = [
                 # Parameters
                 "Downloading Paragraph Segmentation parameters",
@@ -428,7 +449,7 @@ class recognize:
         """
         # detection
         predicted_text_area, croped_image, predicted_bb = self.make_detection(expand_bb_scale_x, expand_bb_scale_y,
-                                                                         segmented_paragraph_size)
+                                                                              segmented_paragraph_size)
         # recognition
         line_images_array, character_probs, decoded = self.make_recognition()
         # decoded_line_ams, decoded_line_bss, decoded_line_denoisers = decoded
@@ -458,12 +479,13 @@ class recognize:
     def make_recognition(self):
         """
         Making recognition
-        :return: line_images_array, character_probs, decoded(string)
+        :return: line_images_array, character_probs, [decoded_line_ams, decoded_line_bss, decoded_line_denoisers]
         """
         line_images_array = self.word_to_line()
         character_probs = self.handwriting_recognition_probs()
         decoded = self.qualitative_result()
-        return line_images_array, character_probs, decoded
+        decoded_line_ams, decoded_line_bss, decoded_line_denoisers = decoded
+        return line_images_array, character_probs, [decoded_line_ams, decoded_line_bss, decoded_line_denoisers]
 
     def image_preprocess(self, expand_bb_scale_x, expand_bb_scale_y, segmented_paragraph_size):
         predicted_text_area = self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
@@ -836,7 +858,7 @@ class recognize:
 if __name__ == "__main__":
     num_device = 1
     device_queue = "cpu"
-    device = device_selection_helper(device=device_queue, num_device=num_device)
+    device = device_selection_helper(device=device_queue, num_device=num_device, framework="mxnet")
 
     # %% recognize class
     image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")

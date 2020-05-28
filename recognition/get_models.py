@@ -7,7 +7,7 @@ from os import path
 import mxnet as mx
 
 
-class get_models():
+class get_models:
     """
     Download network-parameters from link
     """
@@ -90,7 +90,7 @@ class get_models():
         return True
 
 
-class async_get_models():
+class async_get_models:
     """
     Download network-parameters from link
     """

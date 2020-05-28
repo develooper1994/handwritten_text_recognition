@@ -1,5 +1,7 @@
 import mxnet as mx
 
+from detection.craft_text_detector.craft_text_detector.craft_utils import device_selection_helper_pytorch
+
 try:
     from recognition.ocr.handwriting_line_recognition import decode as decoder_handwriting, alphabet_encoding
     from recognition.ocr.utils.beam_search import ctcBeamSearch
@@ -16,7 +18,7 @@ except:
         from recognition.handwritten_text_recognition.recognition.ocr.utils.iam_dataset import IAMDataset
 
 
-def device_selection_helper(device=None, num_device=1):
+def device_selection_helper(device=None, num_device=1, framework="mxnet"):
     """
     Helps to select possible devices.
     :param device:
@@ -29,10 +31,50 @@ def device_selection_helper(device=None, num_device=1):
     if it is 'cpu': uses one, num_device-1 indexed cpu
     if it is 'gpu': uses one, num_device-1 indexed gpu
     :param num_device: number of device that module running on.
+    :param framework: Every framework has different options. For now; MXNET and PYTORCH supported.
+        Default; framework="mxnet"
     :return: possible devices
     """
     num_device = abs(num_device)
+    framework = framework.lower()
     assert num_device != 0, "Please enter bigger than 1"
+    if framework == "mxnet":
+        device_object = device_selection_helper_mxnet(device, num_device)
+
+    elif framework == "pytorch":
+        device_object = device_selection_helper_pytorch(device)
+    else:
+        device_object = None
+
+    return device_object
+
+
+# def device_selection_helper_pytorch(device):
+#     is_device = torch.cuda.is_available()
+#     if device is None or device == 'gpu':
+#         assert is_device, "!!!CUDA is not available!!!"  # Double check ;)
+#         device_object = torch.device('cuda')
+#         cudnn.enabled = True
+#         cudnn.benchmark = False
+#     # elif device == 'auto':
+#     #     if num_device == 1:
+#     #         device_object = mx.gpu(num_device - 1) if mx.context.num_gpus() > 0 else mx.cpu(num_device - 1)
+#     #     else:
+#     #         device_object = [mx.gpu() if mx.context.num_gpus() > 0 else mx.cpu() for i in range(num_device)]
+#     #         # device = [mx.gpu(i) for i in range(num_device)] if mx.context.num_gpus() > 0 else [mx.cpu(i) for i in
+#     #         #                                                                                    range(num_device)]
+#     elif device == 'cpu':
+#         device_object = torch.device('cpu')
+#     elif device == 'auto':
+#         device_object = None  # default for Pytorch. Use all.
+#     else:
+#         # If it isn't a string.
+#         print("Assuming device is a mxnet ctx or device object or queue. Exp: mx.gpu(0)")
+#         device_object = device
+#     return device_object
+
+
+def device_selection_helper_mxnet(device, num_device):
     if device is None:
         if num_device == 1:
             device_object = mx.gpu(0)
@@ -53,7 +95,6 @@ def device_selection_helper(device=None, num_device=1):
         # If it isn't a string.
         print("Assuming device is a mxnet ctx or device object or queue. Exp: mx.gpu(0)")
         device_object = device
-
     return device_object
 
 
