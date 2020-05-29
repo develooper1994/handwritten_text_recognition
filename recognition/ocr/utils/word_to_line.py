@@ -4,10 +4,10 @@ from .expand_bounding_box import expand_bounding_box
 
 
 def _clip_value(value, max_value):
-    '''
+    """
     Helper function to make sure that "value" will not be greater than max_value
     or lower than 0.
-    '''
+    """
     output = value
     if output < 0:
         output = 0
@@ -17,10 +17,10 @@ def _clip_value(value, max_value):
 
 
 def _get_max_coord(bbs, x_or_y):
-    '''
+    """
     Helper function to find the largest coordinate given a list of
     bounding boxes in the x or y direction.
-    '''
+    """
     assert x_or_y in ["x", "y"], "x_or_y can only be x or y"
     max_value = 0.0
     for bb in bbs:
@@ -34,10 +34,10 @@ def _get_max_coord(bbs, x_or_y):
 
 
 def _get_min_coord(bbs, x_or_y):
-    '''
+    """
     Helper function to find the largest coordinate given a list of
     bounding boxes in the x or y direction.
-    '''
+    """
     assert x_or_y in ["x", "y"], "x_or_y can only be x or y"
     min_value = 100
     for bb in bbs:
@@ -51,12 +51,12 @@ def _get_min_coord(bbs, x_or_y):
 
 
 def _get_bounding_box_of_bb_list(bbs_in_a_line):
-    '''
+    """
     Given a list of bounding boxes, find the maximum x, y and
     minimum x, y coordinates. This is the bounding box that
     emcompasses all the words. Return this bounding box in the form
     (x', y', w', h').
-    '''
+    """
     max_x = _get_max_coord(bbs_in_a_line, x_or_y="x")
     min_x = _get_min_coord(bbs_in_a_line, x_or_y="x")
 
@@ -68,9 +68,9 @@ def _get_bounding_box_of_bb_list(bbs_in_a_line):
 
 
 def _filter_bbs(bbs, min_size=0.005):
-    '''
-    Remove bounding boxes that are too small 
-    '''
+    """
+    Remove bounding boxes that are too small
+    """
     output_bbs = []
     for bb in bbs:
         if bb[2] * bb[3] > min_size:
@@ -79,10 +79,10 @@ def _filter_bbs(bbs, min_size=0.005):
 
 
 def _get_line_overlap_percentage(y1, h1, y2, h2):
-    '''
+    """
     Calculates how much (percentage) y2->y2+h2 overlaps with y1->y1+h1.
     Algorithm assumes that y2 is larger than y1
-    '''
+    """
     if y2 > y1 and (y1 + h1) > y2:
         # Is y2 enclosed in y1
         if (y1 + h1) > (y2 + h2):
@@ -94,9 +94,9 @@ def _get_line_overlap_percentage(y1, h1, y2, h2):
 
 
 def _get_rect_overlap_percentage(x1, y1, w1, h1, x2, y2, w2, h2):
-    '''
+    """
     Calculate how much (in percentage) that rect2 overlaps with rect1
-    '''
+    """
     # Check if rect overlaps
     x_overlap = (x1 + w1 >= x2 and x2 >= x1) or (x2 + w2 >= x1 and x1 >= x2)
     y_overlap = (y1 + h1 >= y2 and y2 >= y1) or (y2 + h2 >= y1 and y1 >= y2)
@@ -109,11 +109,11 @@ def _get_rect_overlap_percentage(x1, y1, w1, h1, x2, y2, w2, h2):
 
 
 def combine_bbs_into_lines(bbs, y_overlap=0.2):
-    '''
+    """
     Algorithm to group word crops into lines.
     Iterates over every bb, if the overlap in the y direction
     between 2 boxes has less than y_overlap overlap, then group the previous words together.
-    '''
+    """
     line_bbs = []
     bbs_in_a_line = []
     y_indexes = np.argsort(bbs[:, 1])
@@ -218,9 +218,9 @@ def sort_bbs_line_by_line(bbs, y_overlap=0.2):
 
 
 def crop_line_images(image, line_bbs):
-    '''
+    """
     Given the input form image, crop the image given a list of bounding boxes.
-    '''
+    """
     line_images = []
     for line_bb in line_bbs:
         (x, y, w, h) = line_bb

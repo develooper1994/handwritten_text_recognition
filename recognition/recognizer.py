@@ -34,6 +34,8 @@ from skimage import exposure
 from tqdm import tqdm
 
 # %% my modules
+from detection.craft_text_detector.craft_text_detector.imgproc import read_image
+
 try:
     from recognition.get_models import async_get_models as get_models
     from recognition.ocr.handwriting_line_recognition import Network as HandwritingRecognitionNet, \
@@ -236,9 +238,21 @@ class recognize:
         # %% Network-Parameters
         self.__set_default_networks(net_parameter_path)
 
+    def set_image(self, image):
+        """
+        Configure input image. if image is string then tries to access path.
+        :param image: input image or input image path
+        :return: input image
+        """
+        self.image = image  # consider image is numpy-array or some tensor
+        if isinstance(image, str):
+            # consider image is path of image
+            self.image = read_image(image)  # numpy image
+        return self.image
+
     def reload_default_parameters(self, image, form_size, device, crop, ScliteHelperPATH, show, is_test):
-        assert type(image) is np.ndarray, "Please enter numpy array"
-        self.image = image
+        self.set_image(image)
+        assert type(self.image) is np.ndarray, "Please enter numpy array"
         # self.image = mx.nd.array(image)  # converts to MXNet-NDarray
         # self.image = self.image.asnumpy()
         # loads with channels
