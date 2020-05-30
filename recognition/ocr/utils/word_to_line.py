@@ -71,6 +71,7 @@ def _filter_bbs(bbs, min_size=0.005):
     """
     Remove bounding boxes that are too small
     """
+    # TODO! making bouning box as_ratio and near_far_coords because of this function. Runs slow!
     output_bbs = []
     for bb in bbs:
         if bb[2] * bb[3] > min_size:
@@ -145,9 +146,9 @@ def combine_bbs_into_lines(bbs, y_overlap=0.2):
 
 
 def sort_bbs_line_by_line(bbs, y_overlap=0.2):
-    '''
+    """
     Function to combine word bbs into lines.
-    '''
+    """
     line_bbs = _filter_bbs(bbs, min_size=0.0001)  # Filter small word BBs
     line_bbs = combine_bbs_into_lines(line_bbs, y_overlap)
     line_bb_expanded = []

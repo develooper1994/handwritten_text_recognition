@@ -498,8 +498,8 @@ class recognize:
         line_images_array = self.word_to_line()
         character_probs = self.handwriting_recognition_probs()
         decoded = self.qualitative_result()
-        decoded_line_ams, decoded_line_bss, decoded_line_denoisers = decoded
-        return line_images_array, character_probs, [decoded_line_ams, decoded_line_bss, decoded_line_denoisers]
+        # decoded_line_ams, decoded_line_bss, decoded_line_denoisers = decoded
+        return line_images_array, character_probs, decoded
 
     def image_preprocess(self, expand_bb_scale_x, expand_bb_scale_y, segmented_paragraph_size):
         predicted_text_area = self.predict_bbs(expand_bb_scale_x=expand_bb_scale_x, expand_bb_scale_y=expand_bb_scale_y)
@@ -875,7 +875,47 @@ if __name__ == "__main__":
     device = device_selection_helper(device=device_queue, num_device=num_device, framework="mxnet")
 
     # %% recognize class
-    image = mx.image.imread("tests/TurkishHandwritten/elyaz2.jpeg")
+    # 'decoded': [['Sontence DatabasOa0zOT2 ',
+    #              'TigiogisilngTingigniatiaigtitgittiTtan.Titinim"TTioTiianin',
+    #              'inionilinionicicinioinicivivioiaioinvio',
+    #              'There suppost costs are a bing thain on Americain',
+    #              "doller reserves. Dr. Adenauer's anoer in the",
+    #              'over-and-fpor-all coasth offr of ss7uilion. Preicded',
+    #              "Menoncdy's rejiction of it in a paingeod Whew to the",
+    #              'Wnt Ceman Coovermenty, Ut wll now have to pay',
+    #              'mere - and inceare barctions to do s - or',
+    #              'sun the dvious risths in upretling the new',
+    #              'American administration.',
+    #              'IFazae'],
+    #             ['Sontence DatabasOa0zOT2 ',
+    #              'TigiogisingTingignitaigtigitiTtan.Titinim"TTiioTiianin',
+    #              'inionilininionicicinioinicivivioiaioinvio',
+    #              'There support costs are a bing thain on Americain',
+    #              "doller reserves. Dr. Adenauer's anoer in the",
+    #              'over-and-por-all casth offr of ss7uilion. Preicded',
+    #              "Menonedy's rejiction of it in a paingeod Whew to the",
+    #              'Wnt Ceman Covermenty, Ut wll now have to pay',
+    #              'mere - and inceare barctions to do s - or',
+    #              'sun the dvious risths in upretling the new',
+    #              'American administration.',
+    #              'IFazae'],
+    #             ['S e n t e n c e   D a t a',
+    #              'T i g i n g i n g   s i n g i n g   i g n o r a t i n g   l',
+    #              'o p i n i o n   i l l i n i o n i c i c',
+    #              'T h e r e   s u p p o r t   c o s t s   a r e   a',
+    #              'd o l l a r   r e s e r v e s .   D r .   A r',
+    #              'o v e r - a n d - f o r - a l l   c o a s t s   o f f',
+    #              "M e n a r c h y ' s   r e j e c t i o n   o f   i t",
+    #              'B u t   G e r m a n   G o v e r n m e n t y ,',
+    #              'm o r e -   a n d   i n c r e a s e   s a n',
+    #              's u n   t h e   d e v i o u s   r i s k s',
+    #              'American administration.',
+    #              'I   F a z a r e']],
+    image_name = "a1.png"
+    image_path = r"C:\Users\selcu\PycharmProjects\ocr_toolkit\detection\craft_text_detector\figures\IAM8" + "/" + image_name
+    # image_name = "elyaz2.jpeg"
+    # image_path = r"tests/TurkishHandwritten" + "/" + image_name
+    image = mx.image.imread(image_path)
     image = image.asnumpy()
     # import time
     # t0 = time.time()
