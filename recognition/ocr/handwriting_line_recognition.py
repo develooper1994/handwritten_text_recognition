@@ -198,9 +198,9 @@ class Network(gluon.HybridBlock):
 
 
 def handwriting_recognition_transform(image, line_image_size):
-    '''
+    """
     Resize and normalise the image to be fed into the network.
-    '''
+    """
     image, _ = resize_image(image, line_image_size)
     image = mx.nd.array(image) / 255.
     image = (image - 0.942532484060557) / 0.15926149044640417
@@ -209,10 +209,10 @@ def handwriting_recognition_transform(image, line_image_size):
 
 
 def transform(image, label):
-    '''
+    """
     This function resizes the input image and converts so that it could be fed into the network.
     Furthermore, the label (text) is one-hot encoded.
-    '''
+    """
     image = np.expand_dims(image, axis=0).astype(np.float32)
     if image[0, 0, 0] > 1:
         image = image / 255.
@@ -230,12 +230,12 @@ def transform(image, label):
 
 
 def augment_transform(image, label):
-    '''
+    """
     This function randomly:
         - translates the input image by +-width_range and +-height_range (percentage).
         - scales the image by y_scaling and x_scaling (percentage)
         - shears the image by shearing_factor (radians)
-    '''
+    """
 
     ty = random.uniform(-random_y_translation, random_y_translation)
     tx = random.uniform(-random_x_translation, random_x_translation)
@@ -255,9 +255,9 @@ def augment_transform(image, label):
 
 
 def decode(prediction):
-    '''
+    """
     Returns the string given one-hot encoded vectors.
-    '''
+    """
 
     results = []
     for word in prediction:
@@ -275,32 +275,32 @@ def decode(prediction):
 
 
 def run_epoch(e, network, dataloader, trainer, log_dir, print_name, is_train):
-    '''
+    """
     Run one epoch to train or test the CNN-biLSTM network
-    
+
     Parameters
     ----------
-        
+
     e: int
         The epoch number
     network: nn.Gluon.HybridSequential
         The CNN-biLSTM network
     dataloader: gluon.data.DataLoader
         The train or testing dataloader that is wrapped around the iam_dataset
-    
+
     log_dir: Str
         The directory to store the log files for mxboard
     print_name: Str
         Name to print for associating with the data. usually this will be "train" and "test"
-    
+
     is_train: bool
         Boolean to indicate whether or not the network should be updated. is_train should only be set to true for the training data
     Returns
     -------
-    
+
     epoch_loss: float
         The loss of the current epoch
-    '''
+    """
 
     total_loss = [nd.zeros(1, ctx_) for ctx_ in ctx]
     for i, (x_, y_) in enumerate(dataloader):

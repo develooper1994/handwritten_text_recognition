@@ -276,6 +276,8 @@ class recognize:
         self.reload_network_hyperparameters()
         # download_models()
 
+        self.gray_scale=True
+
     def reload_network_hyperparameters(self, predicted_text_area=0, croped_image=0, predicted_bb=0,
                                        min_c=0.1, overlap_thres=0.1, topk=600,
                                        segmented_paragraph_size=None, line_image_size=None,
@@ -496,7 +498,7 @@ class recognize:
         :return: line_images_array, character_probs, [decoded_line_ams, decoded_line_bss, decoded_line_denoisers]
         """
         line_images_array = self.word_to_line()
-        character_probs = self.handwriting_recognition_probs()
+        character_probs = self.handwriting_recognition_probs(line_images_array=line_images_array)
         decoded = self.qualitative_result()
         # decoded_line_ams, decoded_line_bss, decoded_line_denoisers = decoded
         return line_images_array, character_probs, decoded
@@ -587,9 +589,11 @@ class recognize:
                 (x, y, w, h) = self.predicted_bb[j]
                 image_h, image_w = paragraph_segmented_image.shape[-2:]
                 (x, y, w, h) = (x * image_w, y * image_h, w * image_w, h * image_h)
+
                 rect = patches.Rectangle((x, y), w, h, fill=False, color="r")
                 ax.add_patch(rect)
                 ax.axis('off')
+
             plt.show()
             plt.draw()
             fig.savefig("test_word_segmentation.jpg")

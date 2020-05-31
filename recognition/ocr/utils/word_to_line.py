@@ -150,7 +150,7 @@ def sort_bbs_line_by_line(bbs, y_overlap=0.2):
     Function to combine word bbs into lines.
     """
     line_bbs = _filter_bbs(bbs, min_size=0.0001)  # Filter small word BBs
-    line_bbs = combine_bbs_into_lines(line_bbs, y_overlap)
+    line_bbs = combine_bbs_into_lines(line_bbs, y_overlap)  # makes bb worse
     line_bb_expanded = []
     for line_bb in line_bbs:
         line_bb_i = expand_bounding_box(line_bb, expand_bb_scale_x=0.1,
