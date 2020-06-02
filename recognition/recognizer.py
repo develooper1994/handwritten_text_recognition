@@ -499,7 +499,7 @@ class recognize:
         """
         line_images_array = self.word_to_line()
         character_probs = self.handwriting_recognition_probs(line_images_array=line_images_array)
-        decoded = self.qualitative_result()
+        decoded = self.make_decoded()
         # decoded_line_ams, decoded_line_bss, decoded_line_denoisers = decoded
         return line_images_array, character_probs, decoded
 
@@ -682,7 +682,7 @@ class recognize:
     # %% getting results
     ## Qualitative Result
     # !!! Most important function that gives final results. !!!
-    def qualitative_result(self):
+    def make_decoded(self):
         """
         - [AM] Arg Max CTC Decoding
         - [BS] Beam Search CTC Decoding
